@@ -415,11 +415,28 @@ function borrarHistorial() {
 }
 
 function guardarTipificacion() {
-  const campos = [
-    "inicio", "hora-inicio", "final", "hora-final", "nombre", "acciones", "detalle",
-    "fallas", "descripcion", "comentarios", "tiempo", "actualizado", "documentos",
-    "categoria", "analista", "documento", "asignado", "prioridad", "fecha"
-  ];
+    const campos = [
+  "hora-inicio",       // Hora de Inicio
+  "inicio",            // Estado de Inicio
+  "hora-final",        // Hora Final
+  "final",             // Estado Final
+  "nombre",            // Nombre
+  "acciones",          // Acciones
+  "detalle",           // Detalle de Solicitud
+  "fallas",            // Fallas
+  "descripcion",       // Descripción
+  "comentarios",       // Comentarios
+  "tiempo",            // Tiempo de Gestión
+  "actualizado",       // Nuevo o Actualizado
+  "documentos",        // Cant Documentos
+  "categoria",         // Categoría
+  "analista",          // Analista/Área
+  "documento",         // Nombre de Documento
+  "asignado",          // Asignado a
+  "prioridad",         // Prioridad
+  "fecha"              // Fecha de Entrega
+];
+
 
   const registro = campos.map(id => {
     const el = document.getElementById(id);
