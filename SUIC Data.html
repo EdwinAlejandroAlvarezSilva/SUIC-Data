@@ -255,37 +255,53 @@ setInterval(() => {
 
 
 function guardarFormulario() {
-  const registros = JSON.parse(localStorage.getItem("registros")) || [];
+  const registrosLocales = JSON.parse(localStorage.getItem("registros")) || [];
 
-  if (registros.length === 0) {
-    alert("No hay formularios guardados localmente.");
+  if (registrosLocales.length === 0) {
+    alert("❗ No hay formularios guardados localmente.");
     return;
   }
+
+  const url = "https://script.google.com/macros/s/AKfycbxj-Eex7GKYj0H8jfcwDvfMzvsNDA7iV_yToOTikuwnOfDLjCevFzg0FsDbowyIpaOp/exec"; // 👈 Importante
 
   let enviados = 0;
   let errores = 0;
 
-  registros.forEach((registro, index) => {
-    fetch("https://script.google.com/macros/s/AKfycbz8XNKUhMoYpN8fOuI0KZsVetufMOVFuBxAjfqNcwQBmlyLyND9mlCYXXXTlHNYHGyd/exec", {
+  registrosLocales.forEach((registro, index) => {
+    fetch(url, {
       method: "POST",
       body: JSON.stringify(registro),
-      headers: { "Content-Type": "application/json" }
+      headers: {
+        "Content-Type": "application/json"
+      }
     })
     .then(res => res.text())
-    .then(() => {
+    .then(respuesta => {
       enviados++;
-      if (enviados + errores === registros.length) {
+      if (enviados + errores === registrosLocales.length) {
         finalDeEnvio(enviados, errores);
       }
     })
-    .catch(() => {
+    .catch((error) => {
+      console.error("❌ Error al enviar:", error);
       errores++;
-      if (enviados + errores === registros.length) {
+      if (enviados + errores === registrosLocales.length) {
         finalDeEnvio(enviados, errores);
       }
     });
   });
 }
+
+function finalDeEnvio(enviados, errores) {
+  if (enviados > 0) {
+    alert(`✅ ${enviados} formulario${enviados > 1 ? "s" : ""} enviado${enviados > 1 ? "s" : ""} correctamente${errores > 0 ? `, con ${errores} error${errores > 1 ? "es" : ""}` : ""}.`);
+    localStorage.removeItem("registros");
+    document.getElementById("contador-formularios").textContent = "🗂️ 0 Registros";
+  } else {
+    alert("❌ No se pudo enviar ningún formulario. Revisa tu conexión o configuración.");
+  }
+}
+
 
 function finalDeEnvio(enviados, errores) {
   if (enviados > 0) {
@@ -465,7 +481,7 @@ function guardarTipificacion() {
 
 
 </script>
-<form id="formularioSUIC" action="https://script.google.com/macros/s/AKfycbz8XNKUhMoYpN8fOuI0KZsVetufMOVFuBxAjfqNcwQBmlyLyND9mlCYXXXTlHNYHGyd/exec" method="POST" style="display: none;">
+<form id="formularioSUIC" action="https://script.google.com/macros/s/AKfycbykY3gTZy6i1FrXpDOebVoYspjOpOlQT7-pPcbBzvjE8Q47EkNuBCJ6hoIoKb_BvQ/exec" method="POST" style="display: none;">
   <input type="hidden" name="datos" id="datosFormateados" />
 </form>
 
