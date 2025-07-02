@@ -1,0 +1,212 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", sans-serif;
+  background: #eef1f5;
+  margin: 0;
+  padding: 2rem;
+  color: #2c3e50;
+}
+
+.task-card {
+  max-width: 1100px;
+  margin: auto;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}
+
+.detalle-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+/* Columna izquierda */
+.nombre-tarea label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.nombre-tarea input[type="text"] {
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.acciones-wrapper,
+.fallas-wrapper,
+.detalle-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-bottom: 1.2rem;
+}
+
+.acciones-wrapper label,
+.fallas-wrapper label,
+.detalle-wrapper label {
+  font-weight: 600;
+  white-space: nowrap;
+  margin-right: 0.5rem;
+}
+
+.acciones-wrapper input,
+.fallas-wrapper input,
+.detalle-wrapper input {
+  flex: 1;
+  padding: 0.6rem 0.9rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* Textareas */
+.descripcion textarea,
+.comentarios textarea {
+  width: 100%;
+  height: 80px;
+  padding: 0.8rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  resize: vertical;
+  margin-top: 0.5rem;
+}
+
+/* Base para detalle-linea */
+.detalle-linea {
+  display: grid;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.detalle-linea label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Anchos personalizados por línea */
+.gestion-tiempo        { grid-template-columns: 150px 1fr; }
+.actualizado-nuevo     { grid-template-columns: 160px 1fr; }
+.documentos-cantidad   { grid-template-columns: 140px 1fr; }
+.categoria-general     { grid-template-columns: 80px 1fr; }
+.analista-area         { grid-template-columns: 110px 1fr; }
+.documento-nombre      { grid-template-columns: 180px 1fr; }
+.asignado-a            { grid-template-columns: 80px 1fr; }
+.prioridad-tipo        { grid-template-columns: 70px 1fr; }
+.fecha-entrega         { grid-template-columns: 130px 1fr; }
+
+.detalle-linea input,
+.detalle-linea select {
+  padding: 0.6rem 0.9rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+  width: 100%;
+}
+
+/* Campos específicos con ancho máximo */
+#tiempo       { max-width: 500px; }
+#actualizado  { max-width: 480px; }
+#documentos   { max-width: 540px; }
+#categoria    { max-width: 600px; }
+#analista     { max-width: 550px; }
+#documento    { max-width: 400px; }
+#asignado     { max-width: 410px; }
+#prioridad    { max-width: 450px; }
+#fecha        { max-width: 420px; }
+#inicio, 
+#final        { max-width: 180px; }
+#hora-inicio,
+#hora-final   { max-width: 140px; }
+
+/* Pie */
+.hint {
+  font-size: 0.95rem;
+  color: #555;
+  font-style: italic;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.comentario-centro {
+  display: flex;
+  justify-content: center;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .detalle-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detalle-linea {
+    grid-template-columns: 1fr;
+  }
+
+  .detalle-linea label {
+    margin-bottom: 0.4rem;
+  }
+}
+
+.barra-tiempo {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto 1rem auto;
+  flex-wrap: wrap;
+}
+
+.grupo-tiempo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.grupo-tiempo label {
+  font-weight: 600;
+}
+
+.grupo-tiempo input,
+.grupo-tiempo select {
+  padding: 0.5rem 0.8rem;
+  font-size: 0.95rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+#hora-inicio,
+#hora-final {
+  text-align: center;
+}
+
+.version-box {
+  font-size: 0.85rem;
+  color: #2c3e50;
+  background-color: #d6eaf8;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  display: inline-block;
+  float: right;
+  margin-top: 0.4rem;
+  margin-right: 1rem;
+  box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.1);
+  font-style: normal;
+}

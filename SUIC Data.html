@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SUIC Data</title>
+  <link rel="icon" href="mi-logo.png" type="image/png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="barra-tiempo">
+  <div class="grupo-tiempo">
+
+<div style="display: flex; align-items: center; gap: 1rem;">
+
+<span id="contador-formularios" style="font-weight: bold; color: #2ecc71;">
+  🗂️ 0 Registros
+</span>
+
+  <span style="font-weight: bold; color: #ccc;">|</span>
+  <label for="hora-inicio">Inicio:</label>
+</div>
+
+</span>
+    <input type="text" id="hora-inicio" readonly />
+    <select id="inicio" onchange="colocarHora('inicio')">
+      <option value="">Selecciona…</option>
+      <option value="En proceso">En proceso</option>
+    </select>
+  </div>
+
+  <div class="grupo-tiempo">
+    <label for="hora-final">Final:</label>
+    <input type="text" id="hora-final" readonly />
+    <select id="final" onchange="colocarHora('final')">
+      <option value="">Selecciona…</option>
+      <option value="En pausa">En pausa</option>
+      <option value="Reasignado">Reasignado</option>
+      <option value="Finalizado">Finalizado</option>
+    </select>
+  </div>
+</div>
+
+  <div class="task-card">
+    <div class="detalle-grid">
+      <!-- Columna izquierda -->
+      <div class="columna izquierda">
+        <section class="nombre-tarea">
+          <label for="nombre">Nombre:</label>
+          <input type="text" id="nombre" name="nombre" value="" />
+
+          <div class="acciones-wrapper">
+            <label for="acciones">Acciones:</label>
+            <input type="number" id="acciones" name="acciones" value="" min="0" />
+          </div>
+
+          <div class="detalle-wrapper">
+            <label for="detalle">Detalle de Solicitud:</label>
+            <input list="detalles" id="detalle" name="detalle" value="" />
+            <datalist id="detalles">
+              <option value="Actualizar">
+              <option value="Actualizar Ficha">
+              <option value="Actualizar Info ATC">
+              <option value="Actualizar listas">
+              <option value="Actualizar Registro del Caso">
+              <option value="Agregar Candidatos">
+              <option value="Ampliación de Proceso">
+              <option value="Asignar rol y organización">
+              <option value="Atención Fallas">
+              <option value="Cambio de Correo">
+              <option value="Capacitación">
+              <option value="Creación de Diagrama">
+              <option value="Creación de Proceso">
+              <option value="Creación Ficha">
+              <option value="Creación Registro del Caso">
+              <option value="Crear Info ATC">
+              <option value="Dar formato SUIC">
+              <option value="Desactivar">
+              <option value="Desactivar Ficha">
+              <option value="Desactivar Registro del Caso">
+              <option value="Desactivar, eliminar usuarios">
+              <option value="Diseñar">
+              <option value="Diseñar y publicar">
+              <option value="Envío Recordatorio">
+              <option value="Implementación Nuevas Opciones">
+              <option value="Programar Alerta">
+              <option value="Propuesta">
+              <option value="Propuesta de Mejora">
+              <option value="Proyectos C&C">
+              <option value="Publicar">
+              <option value="Publicar Ficha">
+              <option value="Publicar Registro del Caso">
+              <option value="Reportes">
+              <option value="Reunión">
+              <option value="Revisión de fallas">
+              <option value="Stock Diario (11092023)">
+              <option value="Tiempo Fallas en el Portal">
+              <option value="Trabajos TI en MDY">
+
+            </datalist>
+          </div>
+
+          <div class="fallas-wrapper">
+            <label for="fallas">Fallas:</label>
+            <input type="text" id="fallas" name="fallas" value="" />
+          </div>
+        </section>
+
+        <section class="descripcion">
+          <label for="descripcion">Descripción:</label>
+          <textarea id="descripcion"></textarea>
+        </section>
+
+        <section class="comentarios">
+          <label for="comentarios">Comentarios:</label>
+          <textarea id="comentarios"></textarea>
+        </section>
+      </div>
+
+<!-- Columna derecha -->
+<div class="columna derecha">
+  <h2>Detalles</h2>
+
+  <div class="detalle-linea gestion-tiempo">
+    <label for="tiempo">Tiempo de Gestión:</label>
+    <input list="tiempos" id="tiempo" name="tiempo" />
+    <datalist id="tiempos">
+      <option value="En Línea (1 - 10 minutos)">
+      <option value="Bajo (11 - 90 minutos)">
+      <option value="Medio (91 - 180 minutos)">
+      <option value="Alto (181 - 360 minutos)">
+      <option value="Superior (más de 361 minutos)">
+    </datalist>
+  </div>
+
+  <div class="detalle-linea actualizado-nuevo">
+    <label for="actualizado">Nuevo o Actualizado:</label>
+    <input list="estados" id="actualizado" name="actualizado" />
+    <datalist id="estados">
+      <option value="Nuevo">
+      <option value="Actualizado">
+    </datalist>
+  </div>
+
+  <div class="detalle-linea documentos-cantidad">
+    <label for="documentos">Cant Documentos:</label>
+    <input type="number" id="documentos" name="documentos" min="0" />
+  </div>
+
+  <div class="detalle-linea categoria-general">
+    <label for="categoria">Categoría:</label>
+    <input list="categorias" id="categoria" name="categoria" />
+    <datalist id="categorias">
+      <option value="Accesos al Portal">
+      <option value="Banner">
+      <option value="Base Usuarios">
+      <option value="Bases">
+      <option value="Boletín">
+      <option value="Competencias">
+      <option value="Consolidado de Precios">
+      <option value="Diagrama Postventa">
+      <option value="Diagrama Venta (Resumen NP)">
+      <option value="Documento">
+      <option value="Ficha">
+      <option value="Hojas de Venta">
+      <option value="INFO ATC">
+      <option value="Otros">
+      <option value="Pop up">
+      <option value="Proyecto">
+      <option value="Publicaciones">
+    </datalist>
+  </div>
+
+  <div class="detalle-linea analista-area">
+    <label for="analista">Analista/ Área:</label>
+    <input type="text" id="analista" name="analista" />
+  </div>
+
+  <div class="detalle-linea documento-nombre">
+    <label for="documento">Nombre de Documento:</label>
+    <input type="text" id="documento" name="documento" />
+  </div>
+
+  <div class="detalle-linea asignado-a">
+    <label for="asignado">Asignado a:</label>
+    <input list="asignados" id="asignado" name="asignado" />
+    <datalist id="asignados">
+      <option value="Alexis Javier Rodrigo Guillermo">
+      <option value="Edwin Alejandro Alvarez Silva">
+      <option value="Marianna Paola Hernandez de Abreu">
+      <option value="Rodrigo Mayanga">
+    </datalist>
+  </div>
+
+  <div class="detalle-linea prioridad-tipo">
+    <label for="prioridad">Prioridad:</label>
+    <input list="prioridades" id="prioridad" name="prioridad" />
+    <datalist id="prioridades">
+      <option value="Highest">
+      <option value="High">
+      <option value="Medium">
+    </datalist>
+  </div>
+
+  <div class="detalle-linea fecha-entrega">
+    <label for="fecha">Fecha de Entrega:</label>
+    <input type="date" id="fecha" name="fecha" />
+  </div>
+</div>
+    </div>
+  </div>
+
+<div class="comentario-centro">
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+
+    <button onclick="descargarDatos()" style="padding: 0.6rem 1.2rem; font-size: 1rem; border-radius: 6px; border: none; background-color: #3498db; color: white; cursor: pointer;">
+      Descargar datos
+    </button>
+
+<button onclick="borrarDatos()" style="padding: 0.6rem 1.2rem; font-size: 1rem; border-radius: 6px; border: none; background-color: #e74c3c; color: white; cursor: pointer;">
+  Borrar Datos
+</button>
+
+<button onclick="borrarHistorial()" style="padding: 0.6rem 1.2rem; font-size: 1rem; border-radius: 6px; border: none; background-color: #95a5a6; color: white; cursor: pointer;">
+  🧹 Borrar Historial
+</button>
+
+<button onclick="guardarFormulario()" style="padding: 0.6rem 1.2rem; font-size: 1rem; border-radius: 6px; border: none; background-color: #2ecc71; color: white; cursor: pointer;">
+  Guardar Formulario
+</button>
+
+<button onclick="descargarTodoCSV()" style="padding: 0.6rem 1.2rem; font-size: 1rem; border-radius: 6px; border: none; background-color: #f39c12; color: white; cursor: pointer;">
+  Descargar Todo
+</button>
+
+<p class="hint"><em> </em> <strong> </strong></p><em> </em>
+<p class="hint"><em>Diseñado, programado y afinado por</em> <strong>Edwin Alvarez</strong> <em>– "No es magia, es código."</em></p>
+<div class="version-box">
+  <strong>Versión: </strong>3.0.0
+</div>
+  </div>
+</div>
+
+<script>
+let registros = [];
+
+setInterval(() => {
+  localStorage.setItem("registros", JSON.stringify(registros));
+}, 300000); // Esto guarda cada 5 minutos = 300,000 ms
+
+function guardarFormulario() {
+  const campos = [
+    "hora-inicio", "inicio", "hora-final", "final", "nombre", "acciones", "detalle",
+    "fallas", "descripcion", "comentarios", "tiempo", "actualizado", "documentos",
+    "categoria", "analista", "documento", "asignado", "prioridad", "fecha"
+  ];
+
+  const registro = campos.map(id => {
+    const el = document.getElementById(id);
+    if (!el) return "";
+    if (el.tagName === "SELECT") {
+      return el.options[el.selectedIndex]?.text || "";
+    }
+    return el.value || "";
+  });
+
+  document.getElementById("datosFormateados").value = JSON.stringify(registro);
+  document.getElementById("formularioSUIC").submit();
+}
+
+
+
+function descargarTodoCSV() {
+  if (registros.length === 0) {
+    alert("No hay formularios guardados.");
+    return;
+  }
+
+  const encabezados = [
+    "Inicio", "Estado de Inicio", "Final", "Estado Final", "Nombre", "Acciones",
+    "Detalle de Solicitud", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión",
+    "Nuevo o Actualizado", "Cant Documentos", "Categoría", "Analista/Área",
+    "Nombre de Documento", "Asignado a", "Prioridad", "Fecha de Entrega"
+  ];
+
+  let contenido = encabezados.join(",") + "\n";
+  registros.forEach(fila => {
+    contenido += fila.map(valor => `"${valor}"`).join(",") + "\n";
+  });
+
+  const blob = new Blob([contenido], { type: "text/csv;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "SUIC Data.csv";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+  function colocarHora(tipo) {
+    const horaActual = new Date().toLocaleTimeString('es-PE', { hour12: false });
+    const valor = document.getElementById(tipo).value;
+
+    if (tipo === 'inicio' && valor === 'En proceso') {
+      document.getElementById('hora-inicio').value = horaActual;
+    }
+
+    if (tipo === 'final' && ['En pausa', 'Reasignado', 'Finalizado'].includes(valor)) {
+      document.getElementById('hora-final').value = horaActual;
+    }
+  }
+</script>
+
+<script>
+function descargarDatos() {
+  const campos = [
+    { id: "hora-inicio" },
+    { id: "inicio" },
+    { id: "hora-final" },
+    { id: "final" },
+    { id: "nombre" },
+    { id: "acciones" },
+    { id: "detalle" },
+    { id: "fallas" },
+    { id: "descripcion" },
+    { id: "comentarios" },
+    { id: "tiempo" },
+    { id: "actualizado" },
+    { id: "documentos" },
+    { id: "categoria" },
+    { id: "analista" },
+    { id: "documento" },
+    { id: "asignado" },
+    { id: "prioridad" },
+    { id: "fecha" }
+  ];
+
+  const encabezados = campos.map(c => `"${document.querySelector(`label[for="${c.id}"]`)?.innerText || c.id}"`).join(",");
+  const valores = campos.map(c => {
+    const el = document.getElementById(c.id);
+    if (!el) return '""';
+    if (el.tagName === "SELECT") {
+      return `"${el.options[el.selectedIndex]?.text || ""}"`;
+    }
+    return `"${el.value || ""}"`;
+  }).join(",");
+
+  const contenidoCSV = `${encabezados}\n${valores}`;
+  const blob = new Blob([contenidoCSV], { type: "text/csv;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "SUIC Data.csv";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+function borrarDatos() {
+  const elementos = document.querySelectorAll('input, textarea, select');
+  elementos.forEach(el => {
+    if (el.tagName === 'SELECT') {
+      el.selectedIndex = 0;
+    } else if (['text', 'number', 'date'].includes(el.type) || el.tagName === 'TEXTAREA') {
+      el.value = '';
+    }
+  });
+}
+</script>
+<script>
+window.addEventListener("load", () => {
+  const dataGuardada = localStorage.getItem("registros");
+  if (dataGuardada) {
+    registros = JSON.parse(dataGuardada);
+    document.getElementById("contador-formularios").textContent =
+      `🗂️ ${registros.length} Registro${registros.length === 1 ? "" : "s"}`;
+  }
+});
+
+function borrarHistorial() {
+  if (confirm("¿Estás seguro de borrar todos los formularios guardados? Esta acción no se puede deshacer.")) {
+    registros = [];
+    localStorage.removeItem("registros");
+    document.getElementById("contador-formularios").textContent = "🗂️ 0 Registros";
+    alert("Historial eliminado con éxito.");
+  }
+}
+</script>
+<form id="formularioSUIC" action="https://script.google.com/macros/s/AKfycbz8XNKUhMoYpN8fOuI0KZsVetufMOVFuBxAjfqNcwQBmlyLyND9mlCYXXXTlHNYHGyd/exec" method="POST" style="display: none;">
+  <input type="hidden" name="datos" id="datosFormateados" />
+</form>
+
+</body>
+</html>
