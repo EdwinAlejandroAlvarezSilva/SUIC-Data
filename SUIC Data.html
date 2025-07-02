@@ -251,25 +251,52 @@ setInterval(() => {
   localStorage.setItem("registros", JSON.stringify(registros));
 }, 300000); // Esto guarda cada 5 minutos = 300,000 ms
 
+
+
+
 function guardarFormulario() {
-  const campos = [
-    "hora-inicio", "inicio", "hora-final", "final", "nombre", "acciones", "detalle",
-    "fallas", "descripcion", "comentarios", "tiempo", "actualizado", "documentos",
-    "categoria", "analista", "documento", "asignado", "prioridad", "fecha"
-  ];
+  const registros = JSON.parse(localStorage.getItem("registros")) || [];
 
-  const registro = campos.map(id => {
-    const el = document.getElementById(id);
-    if (!el) return "";
-    if (el.tagName === "SELECT") {
-      return el.options[el.selectedIndex]?.text || "";
-    }
-    return el.value || "";
+  if (registros.length === 0) {
+    alert("No hay formularios guardados localmente.");
+    return;
+  }
+
+  let enviados = 0;
+  let errores = 0;
+
+  registros.forEach((registro, index) => {
+    fetch("https://script.google.com/macros/s/AKfycbz8XNKUhMoYpN8fOuI0KZsVetufMOVFuBxAjfqNcwQBmlyLyND9mlCYXXXTlHNYHGyd/exec", {
+      method: "POST",
+      body: JSON.stringify(registro),
+      headers: { "Content-Type": "application/json" }
+    })
+    .then(res => res.text())
+    .then(() => {
+      enviados++;
+      if (enviados + errores === registros.length) {
+        finalDeEnvio(enviados, errores);
+      }
+    })
+    .catch(() => {
+      errores++;
+      if (enviados + errores === registros.length) {
+        finalDeEnvio(enviados, errores);
+      }
+    });
   });
-
-  document.getElementById("datosFormateados").value = JSON.stringify(registro);
-  document.getElementById("formularioSUIC").submit();
 }
+
+function finalDeEnvio(enviados, errores) {
+  if (enviados > 0) {
+    alert(`✅ Se enviaron ${enviados} formularios correctamente${errores > 0 ? `, pero hubo ${errores} errores.` : "."}`);
+    localStorage.removeItem("registros");
+    document.getElementById("contador-formularios").textContent = "🗂️ 0 Registros";
+  } else {
+    alert("❌ No se pudo enviar ningún formulario.");
+  }
+}
+
 
 
 
