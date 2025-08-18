@@ -222,8 +222,6 @@
   Borrar Datos
 </button>
 
-<button class="boton-primario" onclick="guardarTipificacion()">Guardar Tipificación (local)</button>
-
 <button onclick="borrarHistorial()" style="padding: 0.6rem 1.2rem; font-size: 1rem; border-radius: 6px; border: none; background-color: #95a5a6; color: white; cursor: pointer;">
   🧹 Borrar Historial
 </button>
@@ -239,7 +237,7 @@
 <p class="hint"><em> </em> <strong> </strong></p><em> </em>
 <p class="hint"><em>Diseñado, programado y afinado por</em> <strong>Edwin Alvarez</strong> <em>– "No es magia, es código."</em></p>
 <div class="version-box">
-  <strong>Versión: </strong>3.0.0
+  <strong>Versión: </strong>3.1.0
 </div>
   </div>
 </div>
@@ -251,70 +249,33 @@ setInterval(() => {
   localStorage.setItem("registros", JSON.stringify(registros));
 }, 300000); // Esto guarda cada 5 minutos = 300,000 ms
 
-
-
-
 function guardarFormulario() {
-  const registrosLocales = JSON.parse(localStorage.getItem("registros")) || [];
+  const campos = [
+    "hora-inicio", "inicio", "hora-final", "final", "nombre", "acciones", "detalle",
+    "fallas", "descripcion", "comentarios", "tiempo", "actualizado", "documentos",
+    "categoria", "analista", "documento", "asignado", "prioridad", "fecha"
+  ];
 
-  if (registrosLocales.length === 0) {
-    alert("❗ No hay formularios guardados localmente.");
-    return;
-  }
-
-  const url = "https://script.google.com/macros/s/AKfycbxj-Eex7GKYj0H8jfcwDvfMzvsNDA7iV_yToOTikuwnOfDLjCevFzg0FsDbowyIpaOp/exec"; // 👈 Importante
-
-  let enviados = 0;
-  let errores = 0;
-
-  registrosLocales.forEach((registro, index) => {
-    fetch(url, {
-      method: "POST",
-      body: JSON.stringify(registro),
-      headers: {
-        "Content-Type": "application/json"
-      }
-    })
-    .then(res => res.text())
-    .then(respuesta => {
-      enviados++;
-      if (enviados + errores === registrosLocales.length) {
-        finalDeEnvio(enviados, errores);
-      }
-    })
-    .catch((error) => {
-      console.error("❌ Error al enviar:", error);
-      errores++;
-      if (enviados + errores === registrosLocales.length) {
-        finalDeEnvio(enviados, errores);
-      }
-    });
+  const registro = campos.map(id => {
+    const el = document.getElementById(id);
+    if (!el) return "";
+    if (el.tagName === "SELECT") {
+      return el.options[el.selectedIndex]?.text || "";
+    }
+    return el.value || "";
   });
+
+  registros.push(registro);
+
+localStorage.setItem("registros", JSON.stringify(registros));
+
+document.getElementById("contador-formularios").textContent =
+  `🗂️ ${registros.length} Registro${registros.length === 1 ? "" : "s"}`;
+
+
+  borrarDatos(); // Limpia el formulario
+  alert("Formulario guardado. Puedes llenar otro.");
 }
-
-function finalDeEnvio(enviados, errores) {
-  if (enviados > 0) {
-    alert(`✅ ${enviados} formulario${enviados > 1 ? "s" : ""} enviado${enviados > 1 ? "s" : ""} correctamente${errores > 0 ? `, con ${errores} error${errores > 1 ? "es" : ""}` : ""}.`);
-    localStorage.removeItem("registros");
-    document.getElementById("contador-formularios").textContent = "🗂️ 0 Registros";
-  } else {
-    alert("❌ No se pudo enviar ningún formulario. Revisa tu conexión o configuración.");
-  }
-}
-
-
-function finalDeEnvio(enviados, errores) {
-  if (enviados > 0) {
-    alert(`✅ Se enviaron ${enviados} formularios correctamente${errores > 0 ? `, pero hubo ${errores} errores.` : "."}`);
-    localStorage.removeItem("registros");
-    document.getElementById("contador-formularios").textContent = "🗂️ 0 Registros";
-  } else {
-    alert("❌ No se pudo enviar ningún formulario.");
-  }
-}
-
-
-
 
 function descargarTodoCSV() {
   if (registros.length === 0) {
@@ -429,61 +390,100 @@ function borrarHistorial() {
     alert("Historial eliminado con éxito.");
   }
 }
-
-function guardarTipificacion() {
-    const campos = [
-  "hora-inicio",       // Hora de Inicio
-  "inicio",            // Estado de Inicio
-  "hora-final",        // Hora Final
-  "final",             // Estado Final
-  "nombre",            // Nombre
-  "acciones",          // Acciones
-  "detalle",           // Detalle de Solicitud
-  "fallas",            // Fallas
-  "descripcion",       // Descripción
-  "comentarios",       // Comentarios
-  "tiempo",            // Tiempo de Gestión
-  "actualizado",       // Nuevo o Actualizado
-  "documentos",        // Cant Documentos
-  "categoria",         // Categoría
-  "analista",          // Analista/Área
-  "documento",         // Nombre de Documento
-  "asignado",          // Asignado a
-  "prioridad",         // Prioridad
-  "fecha"              // Fecha de Entrega
-];
-
-
-  const registro = campos.map(id => {
-    const el = document.getElementById(id);
-    if (!el) return "";
-    if (el.tagName === "SELECT") {
-      return el.options[el.selectedIndex]?.text || "";
-    }
-    return el.value || "";
-  });
-
-  // Asegúrate de que el array global "registros" exista
-  if (!window.registros) {
-    window.registros = JSON.parse(localStorage.getItem("registros")) || [];
-  }
-
-  registros.push(registro);
-
-  localStorage.setItem("registros", JSON.stringify(registros));
-
-  document.getElementById("contador-formularios").textContent =
-    `🗂️ ${registros.length} Registro${registros.length === 1 ? "" : "s"}`;
-
-  borrarDatos();
-  alert("Formulario guardado localmente. Puedes llenar otro.");
-}
-
-
 </script>
-<form id="formularioSUIC" action="https://script.google.com/macros/s/AKfycbykY3gTZy6i1FrXpDOebVoYspjOpOlQT7-pPcbBzvjE8Q47EkNuBCJ6hoIoKb_BvQ/exec" method="POST" style="display: none;">
-  <input type="hidden" name="datos" id="datosFormateados" />
-</form>
-
 </body>
+
+<script>
+  // 1. Configuración centralizada: categorías con sus opciones específicas
+  const opcionesPorCategoria = {
+    "Accesos al Portal": ["Asignar rol y organización"],
+    "Banner": ["Actualizar", "Desactivar", "Diseñar", "Publicar"],
+    "Base Usuarios": ["Asignar rol y organización", "Desactivar, eliminar usuarios"],
+    "Bases": ["Actualizar", "Desactivar", "Publicar"],
+    "Boletín": ["Actualizar", "Diseñar y publicar"],
+    "Competencias": ["Agregar Candidatos", "Ampliación de Proceso", "Atención Fallas", "Cambio de Correo", "Creación de Proceso", "Envío Recordatorio", "Reportes"],
+    "Consolidado de Precios": ["Actualizar listas", "Implementación Nuevas Opciones", "Stock Diario (11092023)"],
+    "Diagrama Postventa": ["Actualizar", "Propuesta", "Publicar"],
+    "Diagrama Venta (Resumen NP)": ["Actualizar", "Creación de Diagrama", "Desactivar", "Publicar"],
+    "Documento": ["Actualizar", "Dar formato SUIC", "Desactivar"],
+    "Ficha": ["Actualizar Ficha", "Actualizar Registro del Caso", "Creación Ficha", "Creación Registro del Caso", "Desactivar Ficha", "Desactivar Registro del Caso", "Publicar Ficha", "Publicar Registro del Caso"],
+    "Hojas de Venta": ["Desactivar", "Publicar"],
+    "INFO ATC": ["Crear Info ATC", "Desactivar", "Publicar"],
+    "Otros": ["Capacitación", "Reunión", "Revisión de fallas", "Tiempo Fallas en el Portal", "Trabajos TI en MDY"],
+    "Pop up": ["Diseñar y publicar", "Programar Alerta"],
+    "Proyecto": ["Propuesta de Mejora", "Proyectos C&C"],
+    "Publicaciones": ["Publicar"],
+    // Agrega más pares categoría ↔ opciones si lo necesitas
+  };
+
+  // 2. Escucha cambios en el campo Categoría
+  document.getElementById("categoria").addEventListener("change", function () {
+    const valorCategoria = this.value.trim();
+    const detalleLista = document.getElementById("detalles");
+
+    // Limpiar todas las opciones previas
+    detalleLista.innerHTML = "";
+
+    // 3. Insertar nuevas opciones basadas en la categoría seleccionada
+    const nuevasOpciones = opcionesPorCategoria[valorCategoria];
+
+    if (nuevasOpciones) {
+      nuevasOpciones.forEach(opcionTexto => {
+        const opcion = document.createElement("option");
+        opcion.value = opcionTexto;
+        detalleLista.appendChild(opcion);
+      });
+    } else {
+      // 4. Opciones por defecto si la categoría no está en la configuración
+      const opcionesGenerales = [
+        "Actualizar Ficha", 
+        "Actualizar Info ATC", 
+        "Actualizar listas", 
+        "Actualizar Registro del Caso", 
+        "Agregar Candidatos", 
+        "Ampliación de Proceso", 
+        "Asignar rol y organización", 
+        "Atención Fallas", 
+        "Cambio de Correo", 
+        "Capacitación", 
+        "Creación de Diagrama", 
+        "Creación de Proceso", 
+        "Creación Ficha", 
+        "Creación Registro del Caso", 
+        "Crear Info ATC", 
+        "Dar formato SUIC", 
+        "Desactivar", 
+        "Desactivar Ficha", 
+        "Desactivar Registro del Caso", 
+        "Desactivar, eliminar usuarios", 
+        "Diseñar", 
+        "Diseñar y publicar", 
+        "Envío Recordatorio", 
+        "Implementación Nuevas Opciones", 
+        "Programar Alerta", 
+        "Propuesta", 
+        "Propuesta de Mejora", 
+        "Proyectos C&C", 
+        "Publicar", 
+        "Publicar Ficha", 
+        "Publicar Registro del Caso", 
+        "Reportes", 
+        "Reunión", 
+        "Revisión de fallas", 
+        "Stock Diario (11092023)", 
+        "Tiempo Fallas en el Portal", 
+        "Trabajos TI en MDY"
+        // Añade o modifica estas según lo que consideres base
+      ];
+
+      opcionesGenerales.forEach(opcionTexto => {
+        const opcion = document.createElement("option");
+        opcion.value = opcionTexto;
+        detalleLista.appendChild(opcion);
+      });
+    }
+  });
+</script>
+
+
 </html>
