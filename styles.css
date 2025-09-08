@@ -1,3 +1,39 @@
+body.light-theme .lema-personalizada {
+  color: #000000;
+}
+body.dark-theme .lema-personalizada {
+  color: #ffffff;
+}
+body.light-theme .columna.derecha h2 {
+  color: #000000;
+}
+body.dark-theme .columna.derecha h2 {
+  color: #ffffff;
+}
+body.light-theme .nombre-tarea label,
+body.light-theme .acciones-wrapper label,
+body.light-theme .detalle-wrapper label,
+body.light-theme .fallas-wrapper label,
+body.light-theme .descripcion label,
+body.light-theme .comentarios label,
+body.light-theme .detalle-linea label {
+  color: #000000;
+}
+body.dark-theme .nombre-tarea label,
+body.dark-theme .acciones-wrapper label,
+body.dark-theme .detalle-wrapper label,
+body.dark-theme .fallas-wrapper label,
+body.dark-theme .descripcion label,
+body.dark-theme .comentarios label,
+body.dark-theme .detalle-linea label {
+  color: #ffffff;
+}
+body.light-theme .task-card {
+  background: #ffffff;
+}
+body.dark-theme .task-card {
+  background: #ffffff36;
+}
 /* Modo claro: color para inputs, selects y textareas */
 body.light-theme .detalle-linea input,
 body.light-theme .detalle-linea select,
@@ -93,12 +129,6 @@ body.dark-theme .icono-papelera:hover, body.dark-theme .icono-descargar:hover {
   color: #ffd700;
 }
 /* Color personalizado para el texto del lema */
-.lema-personalizada {
-  color: #8e44ad; /* Morado para modo claro */
-}
-body.dark-theme .lema-personalizada {
-  color: #000000ff; /* Amarillo para modo oscuro */
-}
 /* Reset básico */
 * {
   margin: 0;
