@@ -1,0 +1,623 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Registros</title>
+	<link rel="icon" href="SUIC Data-02.png" type="image/png" />
+		<link rel="stylesheet" href="styles.css" />
+		<!-- Modern overrides: carga adicional para un look más limpio y moderno -->
+		<link rel="stylesheet" href="styles.modern.css" />
+
+		<!-- Quitar el "outline" visual al hacer clic en el logo, pero mantener indicador para navegación por teclado -->
+		<style>
+			/* Evita el borde al hacer clic con mouse pero preserva foco visible para usuarios de teclado */
+			.logo a:focus { outline: none; }
+			/* Mejor: solo remover outline cuando no sea focus-visible (para accesibilidad moderna) */
+			.logo a:focus:not(:focus-visible) { outline: none; }
+			/* También prevenir posible box-shadow u otros estilos al hacer active/click */
+			.logo a:active, .logo a:focus:active { box-shadow: none; }
+			/* Si la imagen recibe focus directo (por ejemplo tabindex) */
+			.logo img:focus { outline: none; }
+
+						/* Estilos para el botón Volver: fijo y por encima de la header-bar
+						   - position: fixed para superponerlo
+						   - top/right controlan la posición
+						   - z-index mayor que .header-bar (1000) para que quede visible */
+						#volver-container {
+							position: fixed; /* sacado del flujo para superponerlo */
+							/* bajarlo más y mover a la izquierda: incrementar top y right */
+							top: 80px; /* bajado más (36px -> 80px) */
+							right: 40px; /* mantener desplazamiento a la izquierda */
+							z-index: 1100; /* mayor que .header-bar (1000) -> queda visible encima */
+							width: auto;
+							display: flex;
+							justify-content: flex-end;
+							margin: 0;
+							pointer-events: auto;
+						}
+						/* Botón en sí: apariencia y micro-interacción agradable */
+						#volver-container #btn-volver {
+							background: linear-gradient(90deg,#06b6d4,#2563eb);
+							color: #fff;
+							border: none;
+							border-radius: 8px;
+							padding: 0.45rem 0.9rem;
+							box-shadow: 0 8px 22px rgba(37,99,235,0.18);
+							display: inline-flex; align-items: center; gap: 8px;
+							transition: transform 160ms ease, box-shadow 160ms ease;
+							position: relative;
+							transform: translateY(0); /* posición por defecto */
+						}
+						/* Hover razonable: subir ligeramente en vez de desplazarse fuera de pantalla */
+						#volver-container #btn-volver:hover {
+							/* Subir ligeramente al hacer hover (valor negativo) en vez de bajar */
+							transform: translateY(-4px);
+							box-shadow: 0 12px 30px rgba(37,99,235,0.18);
+						}
+						/* En móviles: mantenerlo dentro de la pantalla y tamaño adecuado */
+						@media (max-width: 520px) {
+							/* En móviles lo dejamos más abajo para no superponerse al header */
+							#volver-container { right: 12px; top: 120px; }
+							#volver-container { justify-content: center; }
+							#volver-container #btn-volver { padding: 0.5rem 0.8rem; transform: translateY(0); }
+						}
+		</style>
+</head>
+<body class="registros-page">
+	<!-- Barra flotante superior centrada -->
+	<div class="header-bar">
+		<div class="logo">
+			<a href="SUIC Data.html">
+				<img src="SUIC Data-01.png" alt="Logo" />
+			</a>
+		</div>
+		<nav class="menu">
+				<div class="menu-item">
+					<span>Herramientas</span>
+					<div class="submenu">
+						<a href="Registros.html">Registros</a>
+						<a href="#">Opción 2</a>
+					</div>
+				</div>
+			<div class="divider"></div>
+			<div class="menu-item">
+				<span>Sección 2</span>
+				<div class="submenu">
+					<a href="#">Opción 1</a>
+					<a href="#">Opción 2</a>
+				</div>
+			</div>
+			<div class="divider"></div>
+			<div class="menu-item">
+				<span>Enlaces</span>
+				<div class="submenu">
+					<a href="..." target="_blank">Link 1</a>
+					<a href="..." target="_blank">Link 2</a>
+					<a href="..." target="_blank">Link 3</a>
+				</div>
+			</div>
+		</nav>
+						<!-- Contenedor derecho: perfil -->
+						<div style="margin-left:auto; display:flex; align-items:center; gap:12px;">
+							<div id="headerPreview" class="header-preview" style="display:flex;align-items:center;gap:10px;cursor:pointer" title="Editar perfil">
+								<div class="hp-badge" role="button" aria-label="Vista previa de perfil" style="display:inline-flex;align-items:center;gap:8px;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.7);border:1px solid rgba(15,23,42,0.04);box-shadow:0 6px 18px rgba(16,24,40,0.05)">
+									<div id="hpAvatar" class="hp-avatar" style="width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex:0 0 36px;box-shadow:0 6px 14px rgba(2,6,23,0.12);overflow:hidden;background:#2563eb">EA</div>
+									<div id="hpName" class="hp-name" style="font-size:13px;color:#0b1220;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis">Nombre Apellido</div>
+								</div>
+							</div>
+						</div>
+	</div>
+
+	<!-- Contenido principal: tabla de registros -->
+	<main class="main-content" style="max-width:1100px; margin:40px auto 2rem auto; padding: 1rem; position: relative;">
+		<h1 style="margin-bottom:0.5rem;">Registros guardados</h1>
+		<p style="color:#555; margin-top:0; margin-bottom:1rem;">Visualiza y administra los registros guardados desde el formulario.</p>
+
+		<div style="display:flex; gap:0.5rem; margin-bottom:0.8rem; align-items:center;">
+			<button id="btn-refrescar" class="btn btn-neutral" title="Refrescar">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-11l-1 1"/></svg>
+				Refrescar
+			</button>
+			<button id="btn-vaciar" class="btn btn-danger" title="Vaciar historial">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m5 0V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2"/></svg>
+				Vaciar historial
+			</button>
+			<button id="btn-descargar-todo" class="btn btn-primary" title="Descargar Todo">Descargar Todo</button>
+			<span id="registros-count" style="margin-left:auto; font-weight:600;"></span>
+		</div>
+
+				<!-- Botón Volver: ahora en-flujo al final del contenido principal -->
+				<!-- El contenedor se estiliza mediante el bloque de estilos en el head para que quede alineado a la derecha -->
+
+		<!-- Buscador -->
+		<div style="display:flex; gap:0.6rem; margin-bottom:0.8rem; align-items:center;">
+			<input id="buscador-texto" type="search" placeholder="Buscar tipificaciones..." style="flex:1; padding:0.5rem; border-radius:6px; border:1px solid #ccc;" />
+			<select id="buscador-columna" style="padding:0.45rem; border-radius:6px; border:1px solid #ccc;">
+				<option value="all">Todas las columnas</option>
+			</select>
+			<button id="btn-clear-search" class="btn btn-ghost" title="Borrar búsqueda">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+				Borrar
+			</button>
+		</div>
+
+		<!-- Filtros de columnas: botón que despliega una lista -->
+		<div id="column-filters" style="margin-bottom:1rem; display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center; position:relative;">
+			<button id="btn-column-filters" class="btn btn-neutral" aria-expanded="false" aria-controls="column-filters-list" style="padding:0.4rem 0.6rem;"> 
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12 10 19 14 21 14 12 22 3"/></svg>
+				Filtros de columna
+				<small style="margin-left:6px; opacity:0.7;">▾</small>
+			</button>
+			<div id="column-filters-list" class="column-filters-dropdown" role="menu" aria-hidden="true" style="display:none;">
+				<!-- Los checkboxes se generarán dinámicamente aquí -->
+			</div>
+		</div>
+
+		<div id="registros-container">
+			<!-- La tabla será generada dinámicamente por codigo Registros.js -->
+		</div>
+
+		<!-- Modal de edición: réplica del formulario principal (dos columnas) -->
+		<div id="edit-modal" class="modal" aria-hidden="true" style="display:none;">
+			<div class="modal-backdrop"></div>
+			<div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+				<header style="display:flex; justify-content:space-between; align-items:center;">
+					<h2 id="edit-modal-title">Editar tipificación</h2>
+
+					<button id="edit-modal-close" class="btn btn-ghost" title="Cerrar">✕</button>
+				</header>
+
+				<!-- Barra de tiempo dentro del modal (inicio / final) -->
+				<div class="barra-tiempo" style="margin-top:0.6rem; gap:1rem;">
+					<div class="grupo-tiempo" style="display:flex; align-items:center; gap:0.6rem;">
+						<label for="edit-hora-inicio">Inicio:</label>
+						<input type="text" id="edit-hora-inicio" class="fixed-170" style="width:170px !important; min-width:170px !important; max-width:170px !important;" />
+						<select id="edit-inicio" class="fixed-170" style="width:170px !important; min-width:170px !important; max-width:170px !important;">
+				      <option value="">Selecciona…</option>
+				      <option value="En proceso">En proceso</option>
+				    </select>
+				  </div>
+
+					<div class="grupo-tiempo" style="display:flex; align-items:center; gap:0.6rem;">
+						<label for="edit-hora-final">Final:</label>
+						<input type="text" id="edit-hora-final" class="fixed-170" style="width:170px !important; min-width:170px !important; max-width:170px !important;" />
+						<select id="edit-final" class="fixed-170" style="width:170px !important; min-width:170px !important; max-width:170px !important;">
+				      <option value="">Selecciona…</option>
+				      <option value="Continuar">Continuar</option>
+				      <option value="En pausa">En pausa</option>
+				      <option value="Reasignado">Reasignado</option>
+				      <option value="Finalizado">Finalizado</option>
+				    </select>
+				    <span id="edit-diferencia-horas" style="margin-left:1rem; font-weight:bold; color:#0097A9;"></span>
+				  </div>
+				</div>
+
+				<div class="task-card" style="margin-top:0.6rem;">
+					<div class="detalle-grid">
+						<div class="columna izquierda">
+							<section class="nombre-tarea">
+								<label for="edit-nombre">Nombre:</label>
+								<input type="text" id="edit-nombre" name="edit-nombre" value="" />
+
+								<div class="acciones-wrapper">
+									<label for="edit-acciones">Acciones:</label>
+									<input type="number" id="edit-acciones" name="edit-acciones" value="" min="0" />
+								</div>
+
+								<div class="detalle-wrapper">
+									<label for="edit-detalle">Detalle de Solicitud:</label>
+									<input list="detalles" id="edit-detalle" name="edit-detalle" value="" />
+									<datalist id="detalles">
+										<option value="Actualizar">
+										<option value="Actualizar Ficha">
+										<option value="Actualizar Info ATC">
+										<option value="Actualizar listas">
+										<option value="Actualizar Registro del Caso">
+										<option value="Agregar Candidatos">
+										<option value="Ampliación de Proceso">
+										<option value="Asignar rol y organización">
+										<option value="Atención Fallas">
+										<option value="Cambio de Correo">
+										<option value="Capacitación">
+										<option value="Creación de Diagrama">
+										<option value="Creación de Proceso">
+										<option value="Creación Ficha">
+										<option value="Creación Registro del Caso">
+										<option value="Crear Info ATC">
+										<option value="Dar formato SUIC">
+										<option value="Desactivar">
+										<option value="Desactivar Ficha">
+										<option value="Desactivar Registro del Caso">
+										<option value="Desactivar, eliminar usuarios">
+										<option value="Diseñar">
+										<option value="Diseñar y publicar">
+										<option value="Envío Recordatorio">
+										<option value="Implementación Nuevas Opciones">
+										<option value="Programar Alerta">
+										<option value="Propuesta">
+										<option value="Propuesta de Mejora">
+										<option value="Proyectos C&C">
+										<option value="Publicar">
+										<option value="Publicar Ficha">
+										<option value="Publicar Registro del Caso">
+										<option value="Reportes">
+										<option value="Reunión">
+										<option value="Revisión de fallas">
+										<option value="Stock Diario (11092023)">
+										<option value="Tiempo Fallas en el Portal">
+										<option value="Trabajos TI en MDY">
+									</datalist>
+								</div>
+
+								<div class="fallas-wrapper">
+									<label for="edit-fallas">Fallas:</label>
+									<input type="text" id="edit-fallas" name="edit-fallas" value="" />
+								</div>
+							</section>
+
+							<section class="descripcion">
+								<label for="edit-descripcion">Descripción:</label>
+								<textarea id="edit-descripcion"></textarea>
+							</section>
+
+							<section class="comentarios">
+								<label for="edit-comentarios">Comentarios:</label>
+								<textarea id="edit-comentarios"></textarea>
+							</section>
+						</div>
+
+						<div class="columna derecha">
+							<h2>Detalles</h2>
+
+							<div class="detalle-linea gestion-tiempo">
+								<label for="edit-tiempo">Tiempo de Gestión:</label>
+								<input list="tiempos" id="edit-tiempo" name="edit-tiempo" value="En Línea (1 - 10 minutos)" />
+								<!-- Campo oculto para almacenar el valor HH:MM:SS del cronómetro separado del label -->
+								<input type="hidden" id="edit-cronometro" name="edit-cronometro" value="" />
+								<datalist id="tiempos">
+									<option value="En Línea (1 - 10 minutos)">
+									<option value="Bajo (11 - 90 minutos)">
+									<option value="Medio (91 - 180 minutos)">
+									<option value="Alto (181 - 360 minutos)">
+									<option value="Superior (más de 361 minutos)">
+								</datalist>
+							</div>
+
+							<div class="detalle-linea actualizado-nuevo">
+								<label for="edit-actualizado">Nuevo o Actualizado:</label>
+								<input list="estados" id="edit-actualizado" name="edit-actualizado" value="Nuevo" />
+								<datalist id="estados">
+									<option value="Nuevo">
+									<option value="Actualizado">
+								</datalist>
+							</div>
+
+							<div class="detalle-linea documentos-cantidad">
+								<label for="edit-documentos">Cant Documentos:</label>
+								<input type="number" id="edit-documentos" name="edit-documentos" min="0" />
+							</div>
+
+							<div class="detalle-linea categoria-general">
+								<label for="edit-categoria">Categoría:</label>
+								<input list="categorias" id="edit-categoria" name="edit-categoria" />
+								<datalist id="categorias">
+									<option value="Accesos al Portal">
+									<option value="Banner">
+									<option value="Base Usuarios">
+									<option value="Bases">
+									<option value="Boletín">
+									<option value="Competencias">
+									<option value="Consolidado de Precios">
+									<option value="Diagrama Postventa">
+									<option value="Diagrama Venta (Resumen NP)">
+									<option value="Documento">
+									<option value="Ficha">
+									<option value="Hojas de Venta">
+									<option value="INFO ATC">
+									<option value="Otros">
+									<option value="Pop up">
+									<option value="Proyecto">
+									<option value="Publicaciones">
+								</datalist>
+							</div>
+
+							<div class="detalle-linea analista-area">
+								<label for="edit-analista">Analista/ Área:</label>
+								<input type="text" id="edit-analista" name="edit-analista" />
+							</div>
+
+							<div class="detalle-linea documento-nombre">
+								<label for="edit-documento">Nombre de Documento:</label>
+								<input type="text" id="edit-documento" name="edit-documento" />
+							</div>
+
+							<div class="detalle-linea asignado-a">
+								<label for="edit-asignado">Asignado a:</label>
+								<input list="asignados" id="edit-asignado" name="edit-asignado" />
+								<datalist id="asignados">
+									<option value="Alexis Javier Rodrigo Guillermo">
+									<option value="Edwin Alejandro Alvarez Silva">
+									<option value="Marianna Paola Hernandez de Abreu">
+									<option value="Rodrigo Mayanga">
+								</datalist>
+							</div>
+
+							<div class="detalle-linea prioridad-tipo">
+								<label for="edit-prioridad">Prioridad:</label>
+								<input list="prioridades" id="edit-prioridad" name="edit-prioridad" value="Medium" />
+								<datalist id="prioridades">
+									<option value="Highest">
+									<option value="High">
+									<option value="Medium">
+								</datalist>
+							</div>
+
+							<div class="detalle-linea fecha-entrega">
+								<!-- Fecha de Entrega eliminada: ahora usamos fecha+hora en Inicio/Final -->
+							</div>
+						</div>
+					</div>
+
+					<div style="display:flex; gap:0.6rem; justify-content:flex-end; margin-top:0.8rem;">
+						<button type="button" id="edit-cancel" class="btn btn-ghost">Cancelar</button>
+						<button type="button" id="edit-save" class="btn btn-primary">Guardar cambios</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+			<!-- Botón Volver: se coloca en el flujo aquí, al final del main -->
+			<div id="volver-container">
+			  <button id="btn-volver" title="Volver a SUIC Data"> 
+			    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:18px;height:18px;margin-right:6px;"><polyline points="15 18 9 12 15 6"/></svg>
+			    Volver
+			  </button>
+			</div>
+
+		</main>
+
+		<div class="theme-toggle">
+			<button id="toggle-theme">
+				<span id="theme-icon">🌙</span>
+			</button>
+		</div>
+
+		<!-- Botón de Autoborrador (replicado desde SUIC Data.html)
+		     Añadimos un script inline que inicializa el botón localmente para
+		     asegurar que funcione en esta página aunque el script compartido
+		     se cargue tarde o no se ejecute. -->
+		<div class="auto-delete-toggle">
+		  <button id="toggle-autodelete" type="button" title="Autoborrador: desactivado">
+		    <span id="autodel-icon">🧾</span>
+		  </button>
+		</div>
+
+		<script>
+		// Inicializador local del botón de autoborrador (Registros.html)
+		(function(){
+		  const DRAFT_KEY = 'suic_draft';
+		  const AUTODELETE_KEY = 'autodelete_enabled';
+
+		  function isAutodeleteEnabled(){ try{ return localStorage.getItem(AUTODELETE_KEY) === '1' }catch(e){ return false } }
+		  function setAutodeleteEnabled(v){ try{ localStorage.setItem(AUTODELETE_KEY, v ? '1' : '0') }catch(e){} }
+
+		  function updateAutodelBtn(){
+		    const btn = document.getElementById('toggle-autodelete');
+		    const ico = document.getElementById('autodel-icon');
+		    if(!btn) return;
+		    const enabled = isAutodeleteEnabled();
+		    if(enabled){
+		      btn.classList.add('active');
+		      btn.title = 'Autoborrador: activado';
+		      if(ico) ico.textContent = '🗑️';
+		    } else {
+		      btn.classList.remove('active');
+		      btn.title = 'Autoborrador: desactivado';
+		      if(ico) ico.textContent = '🧾';
+		    }
+		  }
+
+		  function quickSaveCronAndDraft(){
+		    try{
+		      // Intentar usar variables globales si existen (desde codigo.js)
+		      let total = 0;
+		      try{
+		        if (typeof _elapsedSeconds !== 'undefined'){
+		          total = Number(_elapsedSeconds) || 0;
+		          if (typeof _running !== 'undefined' && _running && typeof _lastStartTs !== 'undefined' && _lastStartTs){
+		            total += Math.floor((Date.now() - _lastStartTs) / 1000);
+		          }
+		        }
+		      }catch(e){}
+
+		      // Guardar representación legible y valor en segundos
+		      try{ localStorage.setItem('last_cronometro', (function(s){ const hrs = Math.floor(s/3600); const mins = Math.floor((s%3600)/60); const secs = Math.floor(s%60); return `${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`; })(total)); }catch(e){}
+		      try{ localStorage.setItem('last_cronometro_seconds', String(total)); }catch(e){}
+
+		      // Guardado rápido del borrador (solo campos presentes en esta página)
+		      try{
+		        const fields = {};
+		        document.querySelectorAll('input, textarea, select').forEach(el => {
+		          try{
+		            if (!el.id) return;
+		            if (el.tagName === 'SELECT') fields[el.id] = { type: 'select', selectedIndex: el.selectedIndex };
+		            else fields[el.id] = { type: 'input', value: el.value };
+		          }catch(e){}
+		        });
+		        const draft = { timestamp: Date.now(), fields: fields, chrono: { elapsedSeconds: total, running: false, lastStartTs: null } };
+		        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+		      }catch(e){}
+		    }catch(e){}
+		  }
+
+		  // Inicializar cuando el DOM esté listo o si ya lo está
+		  function init(){
+		    updateAutodelBtn();
+		    const btn = document.getElementById('toggle-autodelete');
+		    if(!btn) return;
+		    btn.addEventListener('click', ()=>{
+		      const cur = isAutodeleteEnabled();
+		      // Guardado inmediato del cronómetro y borrador para evitar pérdida
+		      quickSaveCronAndDraft();
+		      // Alternar preferencia
+		      setAutodeleteEnabled(!cur);
+		      updateAutodelBtn();
+		      // Si activan el autoborrador, eliminar el borrador (comportamiento original)
+		      if(!cur){ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }
+		    });
+		  }
+
+		  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+		  else init();
+		})();
+		</script>
+		<script src="theme-toggle.js"></script>
+		<script src="codigo Registros.js"></script>
+		<script src="ui-effects.js"></script>
+		<!-- Incluir el script compartido (contiene la lógica del autoborrador, cronómetro y guardado) -->
+		<script src="codigo.js"></script>
+		<script>
+		  // Botón Volver -> redirige a la página principal SUIC Data
+		  document.addEventListener('DOMContentLoaded', function(){
+		    const btnVolver = document.getElementById('btn-volver');
+		    if(btnVolver) btnVolver.addEventListener('click', function(){
+		      window.location.href = 'SUIC Data.html';
+		    });
+		  });
+		</script>
+		<script>
+		  // Descarga todo directamente desde Registros.html sin navegar a SUIC Data.html.
+		  document.getElementById('btn-descargar-todo').addEventListener('click', function () {
+		    try {
+		      const raw = localStorage.getItem('registros');
+		      const registrosLocal = raw ? JSON.parse(raw) : [];
+		      if (!registrosLocal || registrosLocal.length === 0) {
+		        alert('No hay formularios guardados.');
+		        return;
+		      }
+		
+									const encabezados = [
+										'Inicio', 'Estado de Inicio', 'Final', 'Estado Final', 'Nombre', 'Acciones',
+										'Detalle de Solicitud', 'Fallas', 'Descripción', 'Comentarios', 'Tiempo de Gestión',
+										'Nuevo o Actualizado', 'Cant Documentos', 'Categoría', 'Analista/Área',
+										'Nombre de Documento', 'Asignado a', 'Prioridad', 'Actualizado', 'Tiempo (cronómetro)'
+									];
+
+							let contenido = encabezados.join(',') + '\n';
+
+							// Helper para calcular cronómetro (HH:MM:SS) si no está presente
+							function calcularCronoDesdeFila(fila){
+								try{
+									// si el último campo parece HH:MM:SS, devolverlo
+									const last = fila[fila.length - 1];
+									if(last && typeof last === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(last).trim())) return String(last).trim();
+									// intentar calcular a partir de inicio (pos 0) y final (pos 2)
+									const parse = (s) => {
+										if (!s || typeof s !== 'string') return null;
+										const parts = s.split(' ');
+										if (parts.length < 2) return null;
+										const time = parts[0].split(':').map(Number);
+										const date = parts[1].split('/').map(Number);
+										if (time.length < 3 || date.length < 3) return null;
+										return new Date(date[2], date[1]-1, date[0], time[0], time[1], time[2]);
+									};
+									const a = parse(fila[0]);
+									const b = parse(fila[2]);
+									if(a && b){
+										const diff = Math.abs(b - a);
+										const totalSeconds = Math.floor(diff / 1000);
+										const hours = Math.floor(totalSeconds / 3600);
+										const mins = Math.floor((totalSeconds % 3600) / 60);
+										const secs = totalSeconds % 60;
+										const pad = (n) => String(n).padStart(2, '0');
+										return `${pad(hours)}:${pad(mins)}:${pad(secs)}`;
+									}
+								}catch(e){ }
+								return '';
+							}
+
+							registrosLocal.forEach(filaOrig => {
+								// Asegurar que trabajamos con copia y que la fila tenga al menos tantas columnas como encabezados
+								const fila = Array.isArray(filaOrig) ? filaOrig.slice() : [];
+								// Si falta la última columna (cronómetro), intentar rellenarla
+								const needed = encabezados.length; // 19
+								if (fila.length < needed) {
+									// rellenar con valores vacíos hasta tener la posición para el cronómetro
+									while(fila.length < needed - 1) fila.push('');
+									// último campo: cronómetro (intentar obtenerlo)
+									fila.push(calcularCronoDesdeFila(fila));
+								} else if (fila.length === needed) {
+									// si hay exactamente needed (19), asumimos que la última es cronómetro; si no tiene formato, intentar calcular
+									const last = fila[fila.length - 1];
+									if(!(typeof last === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(last).trim()))) {
+										fila[fila.length - 1] = calcularCronoDesdeFila(fila);
+									}
+								} else if (fila.length > needed) {
+									// si tiene más campos, tomar solo los primeros 'needed' (mantener cronómetro si existe)
+									fila.length = needed;
+								}
+
+								const escaped = fila.map(valor => '"' + String(valor || '').replace(/"/g, '""') + '"').join(',');
+								contenido += escaped + '\n';
+							});
+		
+		      const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8' });
+		      const link = document.createElement('a');
+		      link.href = URL.createObjectURL(blob);
+		      link.download = 'SUIC Data.csv';
+		      document.body.appendChild(link);
+		      link.click();
+		      document.body.removeChild(link);
+		    } catch (err) {
+		      console.error(err);
+		      alert('Ocurrió un error al generar la descarga: ' + (err && err.message ? err.message : String(err)));
+		    }
+		  });
+		</script>
+		<!-- Header preview script (sin dependencia externa) -->
+		<script>
+		  (function(){
+		    const LS_KEY = 'profile_editor_fb_v1'
+		    const hpAvatar = document.getElementById('hpAvatar')
+		    const hpName = document.getElementById('hpName')
+		    const headerPreview = document.getElementById('headerPreview')
+
+		    function applyState(state){
+		      if(!state) return
+		      if(hpName) hpName.textContent = state.name || 'Nombre Apellido'
+		      if(hpAvatar){
+		        if(state.photo){
+		          hpAvatar.innerHTML = ''
+		          const img = document.createElement('img')
+		          img.src = state.photo
+		          img.style.width = '100%'
+		          img.style.height = '100%'
+		          img.style.objectFit = 'cover'
+		          hpAvatar.appendChild(img)
+		        }else{
+		          hpAvatar.innerHTML = ''
+		          hpAvatar.style.background = state.bg || '#2563eb'
+		          hpAvatar.style.color = state.initialsColor || '#ffffff'
+		          hpAvatar.textContent = (state.initials||'EA').toUpperCase()
+		        }
+		      }
+		    }
+
+		    function load(){
+		      try{
+		        const raw = localStorage.getItem(LS_KEY)
+		        if(!raw) return
+		        const state = JSON.parse(raw)
+		        applyState(state)
+		      }catch(e){ console.warn('Header preview: no se pudo leer estado', e) }
+		    }
+
+		    document.addEventListener('DOMContentLoaded', load)
+		    window.addEventListener('storage', (e)=>{ if(e.key===LS_KEY) load() })
+		    if(headerPreview){ headerPreview.addEventListener('click', ()=>{ window.location.href = 'profile_editor_fb.html' }) }
+		  })()
+		</script>
+</body>
+</html>

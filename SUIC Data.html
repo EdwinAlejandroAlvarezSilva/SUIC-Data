@@ -6,20 +6,31 @@
   <title>SUIC Data</title>
   <link rel="icon" href="SUIC Data-02.png" type="image/png" />
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Compact profile preview in header */
+    .header-preview{margin-left:auto;display:flex;align-items:center;gap:10px;cursor:pointer}
+    .hp-avatar{width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex:0 0 36px;box-shadow:0 6px 14px rgba(2,6,23,0.12);overflow:hidden}
+    .hp-name{font-size:13px;color:#0b1220;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+    .hp-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.7);border:1px solid rgba(15,23,42,0.04);box-shadow:0 6px 18px rgba(16,24,40,0.05)}
+    .hp-avatar img{width:100%;height:100%;object-fit:cover}
+    .hp-badge:hover{transform:translateY(-2px)}
+  </style>
 </head>
 <body>
 
   <!-- Barra flotante superior centrada -->
 <div class="header-bar">
   <div class="logo">
-    <img src="SUIC Data-01.png" alt="Logo" />
+    <a href="SUIC Data.html">
+      <img src="SUIC Data-01.png" alt="Logo" />
+    </a>
   </div>
 
   <nav class="menu">
     <div class="menu-item">
-      <span>Sección 1</span>
+      <span>Herramientas</span>
       <div class="submenu">
-        <a href="#">Opción 1</a>
+        <a href="Registros.html">Registros</a>
         <a href="#">Opción 2</a>
       </div>
     </div>
@@ -45,6 +56,13 @@
       </div>
     </div>
   </nav>
+  <!-- Compact profile preview: se actualiza desde localStorage (profile_editor_fb_v1) -->
+  <div id="headerPreview" class="header-preview" title="Editar perfil">
+    <div class="hp-badge" role="button" aria-label="Vista previa de perfil">
+      <div id="hpAvatar" class="hp-avatar" style="background:#2563eb">EA</div>
+      <div id="hpName" class="hp-name">Nombre Apellido</div>
+    </div>
+  </div>
 </div>
 
 <div class="theme-toggle">
@@ -53,17 +71,267 @@
   </button>
 </div>
 
+<!-- Botón de Autoborrador: misma forma que el toggle de tema, a la izquierda -->
+<div class="auto-delete-toggle">
+  <button id="toggle-autodelete" type="button" title="Autoborrador: desactivado">
+    <span id="autodel-icon">🧾</span>
+  </button>
+</div>
+
 
 
 <script src="theme-toggle.js"></script>
+
+<script>
+  // Header preview: lee estado guardado en localStorage (clave profile_editor_fb_v1)
+  (function(){
+    const LS_KEY = 'profile_editor_fb_v1'
+    const hpAvatar = document.getElementById('hpAvatar')
+    const hpName = document.getElementById('hpName')
+    const headerPreview = document.getElementById('headerPreview')
+
+    function applyState(state){
+      if(!state) return
+      // nombre
+      if(hpName) hpName.textContent = state.name || 'Nombre Apellido'
+      // avatar: imagen o iniciales
+      if(hpAvatar){
+        if(state.photo){
+          hpAvatar.innerHTML = ''
+          const img = document.createElement('img')
+          img.src = state.photo
+          hpAvatar.appendChild(img)
+        }else{
+          hpAvatar.innerHTML = ''
+          hpAvatar.style.background = state.bg || '#2563eb'
+          hpAvatar.style.color = state.initialsColor || '#ffffff'
+          hpAvatar.textContent = (state.initials||'EA').toUpperCase()
+        }
+      }
+    }
+
+    function load(){
+      try{
+        const raw = localStorage.getItem(LS_KEY)
+        if(!raw) return
+        const state = JSON.parse(raw)
+        applyState(state)
+      }catch(e){ console.warn('Header preview: no se pudo leer estado', e) }
+    }
+
+    // inicializa
+    document.addEventListener('DOMContentLoaded', load)
+    // actualiza si se cambia localStorage desde otra pestaña
+    window.addEventListener('storage', (e)=>{ if(e.key===LS_KEY) load() })
+
+    // abrir editor al hacer click
+    if(headerPreview){ headerPreview.addEventListener('click', ()=>{ window.location.href = 'profile_editor_fb.html' }) }
+  })()
+</script>
+
+    <script>
+      // Pin 'Asignado a' persistente: defer initialization until DOM is ready
+      (function(){
+        const KEY = 'suic_fixed_asignado'
+
+        // --- IndexedDB helpers ---
+        function openDB(){
+          return new Promise((resolve, reject)=>{
+            try{
+              const req = indexedDB.open('suic_db', 1)
+              req.onupgradeneeded = (e) => {
+                const db = e.target.result
+                if(!db.objectStoreNames.contains('kv')) db.createObjectStore('kv')
+              }
+              req.onsuccess = () => resolve(req.result)
+              req.onerror = () => reject(req.error)
+            }catch(err){ reject(err) }
+          })
+        }
+
+        function idbSet(key, value){
+          return new Promise(async (resolve)=>{
+            try{
+              const db = await openDB()
+              const tx = db.transaction('kv', 'readwrite')
+              const store = tx.objectStore('kv')
+              store.put(value, key)
+              tx.oncomplete = () => { db.close(); resolve(true) }
+              tx.onerror = () => { db.close(); resolve(false) }
+            }catch(e){ resolve(false) }
+          })
+        }
+
+        function idbGet(key){
+          return new Promise(async (resolve)=>{
+            try{
+              const db = await openDB()
+              const tx = db.transaction('kv', 'readonly')
+              const store = tx.objectStore('kv')
+              const req = store.get(key)
+              req.onsuccess = ()=>{ db.close(); resolve(req.result) }
+              req.onerror = ()=>{ db.close(); resolve(null) }
+            }catch(e){ resolve(null) }
+          })
+        }
+
+        function idbRemove(key){
+          return new Promise(async (resolve)=>{
+            try{
+              const db = await openDB()
+              const tx = db.transaction('kv', 'readwrite')
+              tx.objectStore('kv').delete(key)
+              tx.oncomplete = () => { db.close(); resolve(true) }
+              tx.onerror = () => { db.close(); resolve(false) }
+            }catch(e){ resolve(false) }
+          })
+        }
+
+        // --- Cookie helpers ---
+        function setCookie(name, value, days){
+          try{
+            const maxage = (days||3650) * 24 * 60 * 60
+            document.cookie = encodeURIComponent(name) + '=' + encodeURIComponent(value) + ';max-age=' + maxage + ';path=/;SameSite=Lax'
+          }catch(e){}
+        }
+        function getCookie(name){
+          try{
+            const parts = document.cookie.split('; ').map(p=>p.split('='))
+            for(const p of parts){ if(decodeURIComponent(p[0])===name) return decodeURIComponent(p[1]||'') }
+          }catch(e){}
+          return null
+        }
+        function removeCookie(name){
+          try{ document.cookie = encodeURIComponent(name) + '=;max-age=0;path=/;SameSite=Lax' }catch(e){}
+        }
+
+        // Ask browser for persistent storage where supported
+        async function requestPersistence(){
+          try{
+            if(navigator.storage && navigator.storage.persist){
+              const granted = await navigator.storage.persist()
+              console.log('Storage persistence granted:', granted)
+            }
+          }catch(e){ /* ignore */ }
+        }
+
+        // Read from many sources (priority: localStorage, cookie, indexedDB)
+        async function readAny(){
+          try{ const v = localStorage.getItem(KEY); if(v) return v }catch(e){}
+          try{ const c = getCookie(KEY); if(c) return c }catch(e){}
+          try{ const idv = await idbGet(KEY); if(idv) return idv }catch(e){}
+          return null
+        }
+
+        // apply state to elements (elements passed in)
+        function applyPinnedState(asignadoEl, pinBtn, isPinned, val){
+          if(asignadoEl){
+            asignadoEl.value = isPinned ? val : ''
+            asignadoEl.readOnly = !!isPinned
+            asignadoEl.style.opacity = isPinned ? '0.9' : '1'
+            asignadoEl.style.pointerEvents = isPinned ? 'none' : 'auto'
+          }
+          if(pinBtn){
+            pinBtn.style.background = isPinned ? 'linear-gradient(90deg,#0b1220,#1f2a44)' : 'rgba(255,255,255,0.8)'
+            pinBtn.style.color = isPinned ? '#fff' : '#000'
+            pinBtn.title = isPinned ? 'Desfijar asignado' : 'Fijar asignado'
+          }
+        }
+
+        // init after DOM ready
+        document.addEventListener('DOMContentLoaded', async ()=>{
+          const pinBtn = document.getElementById('pinAsignado')
+          const asignadoEl = document.getElementById('asignado')
+
+          async function setPinned(val){
+            try{ localStorage.setItem(KEY, val) }catch(e){}
+            try{ setCookie(KEY, val, 3650) }catch(e){}
+            try{ await idbSet(KEY, val) }catch(e){}
+            await requestPersistence()
+            applyPinnedState(asignadoEl, pinBtn, true, val)
+          }
+
+          async function unsetPinned(){
+            try{ localStorage.removeItem(KEY) }catch(e){}
+            try{ removeCookie(KEY) }catch(e){}
+            try{ await idbRemove(KEY) }catch(e){}
+            applyPinnedState(asignadoEl, pinBtn, false, '')
+          }
+
+          // Apply existing pinned value from any storage
+          try{
+            const v = await readAny()
+            if(v) applyPinnedState(asignadoEl, pinBtn, true, v)
+            else applyPinnedState(asignadoEl, pinBtn, false, '')
+          }catch(e){ applyPinnedState(asignadoEl, pinBtn, false, '') }
+
+          if(pinBtn){
+            pinBtn.addEventListener('click', async ()=>{
+              const cur = await readAny()
+              if(cur){
+                await unsetPinned()
+                return
+              }
+              const value = asignadoEl && asignadoEl.value ? asignadoEl.value.trim() : ''
+              if(!value){ alert('Escribe o selecciona un valor en "Asignado a" antes de fijar.'); return }
+              await setPinned(value)
+            })
+          }
+
+          // Watcher: si otro proceso borra el campo o el storage, restauramos el valor fijado cada segundo
+          let restoreInterval = null
+          try{
+            restoreInterval = setInterval(async ()=>{
+              const cur = await readAny()
+              if(cur){
+                // si el input no muestra el valor, reponer
+                if(!asignadoEl) return
+                if(asignadoEl.value !== cur || !asignadoEl.readOnly){
+                  applyPinnedState(asignadoEl, pinBtn, true, cur)
+                }
+              }
+            }, 1000)
+          }catch(e){ /* ignore */ }
+
+          // before unload: re-write storages to make accidental removal less likely
+          window.addEventListener('beforeunload', async (ev)=>{
+            try{
+              const cur = await readAny()
+              if(cur){
+                try{ localStorage.setItem(KEY, cur) }catch(e){}
+                try{ setCookie(KEY, cur, 3650) }catch(e){}
+                try{ await idbSet(KEY, cur) }catch(e){}
+              }
+            }catch(e){ }
+          })
+
+          // cleanup if page is navigated away programmatically
+          window.addEventListener('unload', ()=>{ if(restoreInterval) clearInterval(restoreInterval) })
+
+        })
+
+        // cross-tab sync (localStorage events)
+        window.addEventListener('storage', (e)=>{
+          if(e.key === KEY){
+            document.addEventListener('DOMContentLoaded', ()=>{
+              const pinBtn = document.getElementById('pinAsignado')
+              const asignadoEl = document.getElementById('asignado')
+              if(e.newValue) applyPinnedState(asignadoEl, pinBtn, true, e.newValue)
+              else applyPinnedState(asignadoEl, pinBtn, false, '')
+            })
+          }
+        })
+
+      })()
+    </script>
 
 
 <div class="barra-tiempo">
   <div class="grupo-tiempo">
     <div style="display: flex; align-items: center; gap: 1rem;">
-      <span id="contador-formularios" style="font-weight: bold; color: #2ecc71;">
+      <a id="contador-formularios" href="Registros.html" style="font-weight: bold; color: #2ecc71; text-decoration: none;">
         🗂️ 0 Registros
-      </span>
+      </a>
       <span style="font-weight: bold; color: #ccc;">|</span>
       <label for="hora-inicio">Inicio:</label>
     </div>
@@ -79,6 +347,7 @@
   <input type="text" id="hora-final" />
     <select id="final" onchange="colocarHora('final')">
       <option value="">Selecciona…</option>
+      <option value="Continuar">Continuar</option>
       <option value="En pausa">En pausa</option>
       <option value="Reasignado">Reasignado</option>
       <option value="Finalizado">Finalizado</option>
@@ -228,7 +497,10 @@
 
       <div class="detalle-linea asignado-a">
         <label for="asignado">Asignado a:</label>
-        <input list="asignados" id="asignado" name="asignado" />
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input list="asignados" id="asignado" name="asignado" />
+          <button id="pinAsignado" type="button" title="Fijar asignado" style="padding:6px;border-radius:8px;border:1px solid rgba(15,23,42,0.06);background:rgba(255,255,255,0.8);cursor:pointer">📌</button>
+        </div>
         <datalist id="asignados">
           <option value="Alexis Javier Rodrigo Guillermo">
           <option value="Edwin Alejandro Alvarez Silva">
@@ -248,8 +520,7 @@
       </div>
 
       <div class="detalle-linea fecha-entrega">
-        <label for="fecha">Fecha de Entrega:</label>
-        <input type="date" id="fecha" name="fecha" />
+        <!-- Fecha de Entrega eliminada: ahora usamos fecha+hora en Inicio/Final -->
       </div>
     </div>
   </div>
@@ -283,7 +554,7 @@
   </p>
 
   <div class="version-box">
-    <strong>Versión:</strong> 2.1.0
+    <strong>Versión:</strong> 4.2.0
   </div>
 </div>
 
@@ -300,7 +571,155 @@
     }
   });
 </script>
+<!-- Descarga Todo (misma lógica que Registros.html) -->
+<script>
+  function descargarTodoCSV(){
+    try{
+      const raw = localStorage.getItem('registros');
+      const registrosLocal = raw ? JSON.parse(raw) : [];
+      if (!registrosLocal || registrosLocal.length === 0) { alert('No hay formularios guardados.'); return; }
+
+      const encabezados = [
+        'Inicio', 'Estado de Inicio', 'Final', 'Estado Final', 'Nombre', 'Acciones',
+        'Detalle de Solicitud', 'Fallas', 'Descripción', 'Comentarios', 'Tiempo de Gestión',
+        'Nuevo o Actualizado', 'Cant Documentos', 'Categoría', 'Analista/Área',
+        'Nombre de Documento', 'Asignado a', 'Prioridad', 'Tiempo (cronómetro)'
+      ];
+
+      let contenido = encabezados.join(',') + '\n';
+
+      function calcularCronoDesdeFila(fila){
+        try{
+          const last = fila[fila.length - 1];
+          if(last && typeof last === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(last).trim())) return String(last).trim();
+          const parse = (s) => {
+            if (!s || typeof s !== 'string') return null;
+            const parts = s.split(' ');
+            if (parts.length < 2) return null;
+            const time = parts[0].split(':').map(Number);
+            const date = parts[1].split('/').map(Number);
+            if (time.length < 3 || date.length < 3) return null;
+            return new Date(date[2], date[1]-1, date[0], time[0], time[1], time[2]);
+          };
+          const a = parse(fila[0]);
+          const b = parse(fila[2]);
+          if(a && b){
+            const diff = Math.abs(b - a);
+            const totalSeconds = Math.floor(diff / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const mins = Math.floor((totalSeconds % 3600) / 60);
+            const secs = totalSeconds % 60;
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${pad(hours)}:${pad(mins)}:${pad(secs)}`;
+          }
+        }catch(e){}
+        return '';
+      }
+
+      registrosLocal.forEach(filaOrig => {
+        const fila = Array.isArray(filaOrig) ? filaOrig.slice() : [];
+        const needed = encabezados.length;
+        if (fila.length < needed) {
+          while(fila.length < needed - 1) fila.push('');
+          fila.push(calcularCronoDesdeFila(fila));
+        } else if (fila.length === needed) {
+          const last = fila[fila.length - 1];
+          if(!(typeof last === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(last).trim()))) {
+            fila[fila.length - 1] = calcularCronoDesdeFila(fila);
+          }
+        } else if (fila.length > needed) {
+          fila.length = needed;
+        }
+        const escaped = fila.map(valor => '"' + String(valor || '').replace(/"/g, '""') + '"').join(',');
+        contenido += escaped + '\n';
+      });
+
+      const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'SUIC Data.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }catch(err){ console.error(err); alert('Ocurrió un error al generar la descarga: ' + (err && err.message ? err.message : String(err))); }
+  }
+</script>
 <!-- Script externo -->
 <script src="codigo.js"></script>
+<!-- Replicar en SUIC Data la función de descarga tal como está en Registros.html -->
+<script>
+  // Copiado desde Registros.html: descarga todo incluyendo la columna 'Actualizado' y 'Tiempo (cronómetro)'
+  function descargarTodoCSV(){
+    try{
+      const raw = localStorage.getItem('registros');
+      const registrosLocal = raw ? JSON.parse(raw) : [];
+      if (!registrosLocal || registrosLocal.length === 0) { alert('No hay formularios guardados.'); return; }
+
+      const encabezados = [
+        'Inicio', 'Estado de Inicio', 'Final', 'Estado Final', 'Nombre', 'Acciones',
+        'Detalle de Solicitud', 'Fallas', 'Descripción', 'Comentarios', 'Tiempo de Gestión',
+        'Nuevo o Actualizado', 'Cant Documentos', 'Categoría', 'Analista/Área',
+        'Nombre de Documento', 'Asignado a', 'Prioridad', 'Actualizado', 'Tiempo (cronómetro)'
+      ];
+
+      let contenido = encabezados.join(',') + '\n';
+
+      function calcularCronoDesdeFila(fila){
+        try{
+          const last = fila[fila.length - 1];
+          if(last && typeof last === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(last).trim())) return String(last).trim();
+          const parse = (s) => {
+            if (!s || typeof s !== 'string') return null;
+            const parts = s.split(' ');
+            if (parts.length < 2) return null;
+            const time = parts[0].split(':').map(Number);
+            const date = parts[1].split('/').map(Number);
+            if (time.length < 3 || date.length < 3) return null;
+            return new Date(date[2], date[1]-1, date[0], time[0], time[1], time[2]);
+          };
+          const a = parse(fila[0]);
+          const b = parse(fila[2]);
+          if(a && b){
+            const diff = Math.abs(b - a);
+            const totalSeconds = Math.floor(diff / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const mins = Math.floor((totalSeconds % 3600) / 60);
+            const secs = totalSeconds % 60;
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${pad(hours)}:${pad(mins)}:${pad(secs)}`;
+          }
+        }catch(e){ }
+        return '';
+      }
+
+      registrosLocal.forEach(filaOrig => {
+        const fila = Array.isArray(filaOrig) ? filaOrig.slice() : [];
+        const needed = encabezados.length; // including 'Actualizado' and cronómetro
+        if (fila.length < needed) {
+          while(fila.length < needed - 1) fila.push('');
+          fila.push(calcularCronoDesdeFila(fila));
+        } else if (fila.length === needed) {
+          const last = fila[fila.length - 1];
+          if(!(typeof last === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(last).trim()))) {
+            fila[fila.length - 1] = calcularCronoDesdeFila(fila);
+          }
+        } else if (fila.length > needed) {
+          fila.length = needed;
+        }
+        const escaped = fila.map(valor => '"' + String(valor || '').replace(/"/g, '""') + '"').join(',');
+        contenido += escaped + '\n';
+      });
+
+      const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'SUIC Data.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }catch(err){ console.error(err); alert('Ocurrió un error al generar la descarga: ' + (err && err.message ? err.message : String(err))); }
+  }
+</script>
+
 </body>
 </html>

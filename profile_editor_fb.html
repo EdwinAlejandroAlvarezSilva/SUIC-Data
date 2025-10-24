@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Editor de Perfil - Estilo Facebook</title>
+  <style>
+  :root{--accent:#0b1220;--muted:#6b7280;--bg:#f5f7fb;--card:#ffffff;--primary:#071028;--glass:rgba(15,23,42,0.04)}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;background:var(--bg);color:var(--primary);-webkit-font-smoothing:antialiased}
+  .topbar{background:linear-gradient(90deg,rgba(255,255,255,0.7), rgba(247,248,250,0.7));backdrop-filter:blur(4px);border-bottom:1px solid rgba(15,23,42,0.04);padding:12px 20px;display:flex;align-items:center;gap:14px;justify-content:center}
+  .brand{font-weight:700;font-size:18px;letter-spacing:0.3px;color:var(--primary)}
+    .wrap{display:flex;justify-content:center;padding:36px}
+    .card{width:100%;max-width:960px;background:var(--card);border-radius:12px;box-shadow:0 12px 40px rgba(16,24,40,0.06);padding:28px;display:grid;grid-template-columns:320px 1fr;gap:28px;align-items:start}
+    .left{display:flex;flex-direction:column;align-items:center;gap:18px}
+    .avatar{width:260px;height:260px;border-radius:50%;background:linear-gradient(180deg,#e9eef6,#dfe8f8);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(16,24,40,0.06)}
+    .avatar img{width:100%;height:100%;object-fit:cover}
+    .avatar .cam{position:absolute;right:12px;bottom:12px;background:var(--glass);backdrop-filter:blur(4px);padding:10px;border-radius:10px;display:flex;align-items:center;gap:8px;color:var(--primary);cursor:pointer}
+    .cam svg{width:16px;height:16px}
+    .right{display:flex;flex-direction:column;gap:16px}
+    label{display:block;font-size:13px;color:var(--accent);font-weight:600;margin-bottom:8px}
+  input[type=text],input[type=file],button{padding:12px 14px;border-radius:10px;border:1px solid rgba(15,23,42,0.06);background:linear-gradient(180deg,rgba(255,255,255,0.9),rgba(250,250,251,0.9));font-size:14px;transition:all .18s ease}
+  input[type=color]{width:56px;height:44px;padding:0;border-radius:8px;border:1px solid rgba(15,23,42,0.06)}
+    .row{display:flex;gap:12px;align-items:center}
+    .color-list{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+  .color-chip{width:44px;height:44px;border-radius:8px;border:1px solid rgba(0,0,0,0.04);cursor:pointer;box-shadow:inset 0 -2px 6px rgba(0,0,0,0.02);padding:0;display:inline-block}
+  .color-chip:focus{outline:3px solid rgba(14,165,233,0.18)}
+  .buttons{display:flex;gap:12px;margin-top:10px;justify-content:flex-end}
+  .btn{padding:10px 14px;border-radius:10px;border:1px solid rgba(15,23,42,0.06);background:rgba(255,255,255,0.6);color:var(--primary);font-weight:600;cursor:pointer;box-shadow:0 6px 18px rgba(16,24,40,0.04);transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+  .btn.icon{display:inline-flex;gap:8px;align-items:center}
+  .btn:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(16,24,40,0.08)}
+  .btn.primary{background:linear-gradient(90deg,#0b1220,#1f2a44);color:white;border:none}
+  .btn.primary:hover{box-shadow:0 14px 36px rgba(11,18,32,0.18)}
+    .muted{color:var(--muted);font-size:13px}
+    .status{height:18px;color:var(--muted);font-size:13px}
+    .field{background:transparent}
+    /* Preview card */
+      .preview-card{display:flex;align-items:center;gap:14px;padding:14px;border-radius:14px;background:rgba(255,255,255,0.55);backdrop-filter:blur(6px);box-shadow:0 10px 26px rgba(16,24,40,0.05);border:1px solid rgba(255,255,255,0.6);min-width:260px}
+    .preview-avatar-wrap{width:68px;height:68px;border-radius:50%;padding:4px;background:linear-gradient(135deg,rgba(124,58,237,0.14),rgba(14,165,233,0.12));display:flex;align-items:center;justify-content:center}
+    .preview-avatar-inner{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#071028;font-size:16px;background:linear-gradient(180deg,#ffffff,#fbfbff);box-shadow:0 6px 18px rgba(16,24,40,0.06);transition:transform .22s ease,box-shadow .22s ease}
+    .preview-avatar-inner img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+      .preview-info{display:flex;flex-direction:column}
+      .preview-name{font-weight:700;color:var(--primary)}
+      .preview-role{font-size:12px;color:var(--muted)}
+      .preview-actions{margin-left:auto}
+  .preview-card .btn{padding:8px 10px;border-radius:8px}
+  .preview-card .btn svg{opacity:0.9}
+    /* icon buttons */
+    .btn.icon{display:inline-flex;gap:8px;align-items:center}
+    .btn svg{width:16px;height:16px;flex:0 0 16px}
+    @media(max-width:880px){.card{grid-template-columns:1fr;align-items:center}.left{order:0}}
+  </style>
+</head>
+<body style="padding-top:20px">
+  <div class="topbar"><div class="brand">Perfil — Elegante</div></div>
+  <button id="backBtn" title="Volver" style="position:fixed;top:14px;right:18px;padding:8px 10px;border-radius:8px;border:1px solid rgba(15,23,42,0.06);background:rgba(255,255,255,0.85);box-shadow:0 8px 20px rgba(16,24,40,0.06);cursor:pointer;z-index:999">← Volver</button>
+  <div class="wrap">
+    <div class="card" role="main">
+      <!-- banner temporal eliminado -->
+
+      <div class="left">
+        <div id="avatar" class="avatar" aria-hidden="true">EA</div>
+        <div class="cam" id="uploadBtn" title="Subir foto" role="button" aria-label="Subir foto">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 9h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span style="font-size:13px">Foto</span>
+        </div>
+        <input id="file" type="file" accept="image/*" style="display:none">
+        <div class="muted">Consejo: usa una imagen cuadrada para mejor resultado</div>
+      </div>
+
+      <div class="right">
+        <div>
+          <label for="displayName">Nombre</label>
+          <input id="displayName" class="field" type="text" placeholder="Tu nombre" maxlength="60">
+        </div>
+
+        <div class="row">
+          <div style="flex:1">
+            <label for="initials">Iniciales</label>
+            <input id="initials" class="field" type="text" maxlength="2" placeholder="EA" aria-label="Iniciales">
+          </div>
+          <div style="width:120px">
+            <label for="bgcolor">Color fondo</label>
+            <input id="bgcolor" type="color" value="#2563eb" aria-label="Color de fondo">
+          </div>
+          <div style="width:120px">
+            <label for="initialsColor">Color iniciales</label>
+            <input id="initialsColor" type="color" value="#ffffff" aria-label="Color de las iniciales">
+          </div>
+        </div>
+
+        <div id="mainColors" class="color-list" role="list" aria-label="Colores principales"></div>
+
+        <div style="margin-top:12px">
+          <div id="previewCard" class="preview-card" aria-label="Vista previa del perfil">
+              <div class="preview-avatar-wrap"><div id="previewAvatar" class="preview-avatar-inner" style="background:#2563eb">EA</div></div>
+              <div class="preview-info">
+                <div id="previewName" class="preview-name">Nombre Apellido</div>
+                <div id="previewRole" class="preview-role">Usuario</div>
+              </div>
+              <div class="preview-actions">
+                <button class="btn icon" type="button" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 9c0-1 0-2 1-3 1-1 2-1 3-1h6c1 0 2 0 3 1 1 1 1 2 1 3v8c0 1-1 2-2 2H7c-1 0-2-1-2-2V9z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Ver perfil</button>
+              </div>
+            </div>
+        </div>
+
+        <div class="buttons">
+          <button id="removePhoto" type="button" class="btn icon" title="Eliminar foto"><svg viewBox="0 0 24 24" fill="none"><path d="M3 6h18" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M8 6v12c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2V6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 11v4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M14 11v4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Eliminar foto</button>
+          <button id="reset" type="button" class="btn icon" title="Restablecer"><svg viewBox="0 0 24 24" fill="none"><path d="M21 12a9 9 0 1 1-3-6.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 3v6h-6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Restablecer</button>
+          <button id="save" type="button" class="btn primary icon" title="Guardar"><svg viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Guardar</button>
+        </div>
+
+        <div id="status" class="status" style="margin-top:8px"></div>
+
+      </div>
+
+    </div>
+
+    <script>
+      (function(){
+        const DEFAULT = {name: 'Nombre Apellido', initials: 'EA', bg: '#2563eb', photo: null}
+        const LS_KEY = 'profile_editor_fb_v1'
+
+        const avatarEl = document.getElementById('avatar')
+        const fileEl = document.getElementById('file')
+        const uploadBtn = document.getElementById('uploadBtn')
+        const initialsEl = document.getElementById('initials')
+        const bgcolorEl = document.getElementById('bgcolor')
+        const initialsColorEl = document.getElementById('initialsColor')
+        const removePhotoBtn = document.getElementById('removePhoto')
+        const displayNameEl = document.getElementById('displayName')
+        const saveBtn = document.getElementById('save')
+        const resetBtn = document.getElementById('reset')
+  const mainColorsEl = document.getElementById('mainColors')
+  const statusEl = document.getElementById('status')
+  // preview elements (new)
+  const previewAvatar = document.getElementById('previewAvatar') || document.getElementById('miniAvatar')
+  const previewName = document.getElementById('previewName') || document.getElementById('miniName')
+
+        const cssColors = ['#ff4d4f','#ff7a59','#ffd200','#32d74b','#0ea5e9','#7c3aed','#ff3cac','#ff6b00']
+
+        function createMainColors(){
+          if(!mainColorsEl) return
+          mainColorsEl.innerHTML = ''
+          cssColors.forEach(c=>{
+            const btn = document.createElement('button')
+            btn.type = 'button'
+            btn.className = 'color-chip'
+            btn.title = c
+            btn.setAttribute('role','listitem')
+            btn.style.backgroundColor = c
+            btn.style.backgroundImage = 'none'
+            btn.style.border = '1px solid rgba(0,0,0,0.06)'
+            btn.setAttribute('aria-label','Color '+c)
+            btn.addEventListener('click', ()=>{ if(bgcolorEl) bgcolorEl.value = c; renderInitials(); showStatus('Color seleccionado') })
+            btn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); btn.click() } })
+            mainColorsEl.appendChild(btn)
+          })
+        }
+
+        function showStatus(msg='', timeout=1400){ if(!statusEl) return; statusEl.textContent = msg; if(timeout>0) setTimeout(()=>statusEl.textContent='', timeout) }
+
+        function setInitials(initials, bg, initialsColor){
+          if(!avatarEl) return
+          const text = (initials||DEFAULT.initials).toUpperCase()
+          avatarEl.innerHTML = ''
+          avatarEl.style.background = bg || DEFAULT.bg
+          avatarEl.textContent = text
+          avatarEl.style.color = initialsColor || '#ffffff'
+          avatarEl.style.fontSize = (text.length===1)? '96px':'52px'
+          avatarEl.removeAttribute('data-photo')
+          if(previewAvatar){
+            previewAvatar.innerHTML = ''
+            previewAvatar.textContent = text
+            previewAvatar.style.background = bg || DEFAULT.bg
+            previewAvatar.style.color = initialsColor || '#ffffff'
+            previewAvatar.style.fontSize = '16px'
+          }
+        }
+
+        function setPhoto(dataUrl){
+          if(!avatarEl) return
+          avatarEl.innerHTML = ''
+          const img = document.createElement('img')
+          img.src = dataUrl
+          avatarEl.appendChild(img)
+          avatarEl.dataset.photo = dataUrl
+          // update preview to show image if previewAvatar exists
+          if(previewAvatar){
+            previewAvatar.innerHTML = ''
+            const pimg = document.createElement('img')
+            pimg.src = dataUrl
+            pimg.style.width = '100%'
+            pimg.style.height = '100%'
+            pimg.style.objectFit = 'cover'
+            pimg.style.borderRadius = '50%'
+            previewAvatar.appendChild(pimg)
+          }
+        }
+
+        function renderInitials(){
+          if(!avatarEl) return
+          if(avatarEl.dataset.photo) return
+          const text = (initialsEl && initialsEl.value ? initialsEl.value : DEFAULT.initials).toUpperCase()
+          avatarEl.textContent = text
+          if(bgcolorEl) avatarEl.style.background = bgcolorEl.value
+          avatarEl.style.color = (initialsColorEl && initialsColorEl.value) ? initialsColorEl.value : '#ffffff'
+          if(previewAvatar){
+            previewAvatar.textContent = text
+            if(bgcolorEl) previewAvatar.style.background = bgcolorEl.value
+            previewAvatar.style.color = (initialsColorEl && initialsColorEl.value) ? initialsColorEl.value : '#ffffff'
+          }
+          if(previewName && displayNameEl) previewName.textContent = displayNameEl.value || DEFAULT.name
+        }
+
+        function save(){
+          const state = {
+            name: displayNameEl ? displayNameEl.value||DEFAULT.name : DEFAULT.name,
+            initials: initialsEl ? (initialsEl.value||DEFAULT.initials).toUpperCase() : DEFAULT.initials,
+            bg: bgcolorEl ? bgcolorEl.value : DEFAULT.bg,
+            initialsColor: (initialsColorEl && initialsColorEl.value) ? initialsColorEl.value : '#ffffff',
+            photo: (avatarEl && avatarEl.dataset && avatarEl.dataset.photo) ? avatarEl.dataset.photo : null
+          }
+          try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); showStatus('Guardado') }catch(e){ console.warn('No se pudo guardar en localStorage',e); showStatus('Error al guardar',2000) }
+        }
+
+        function load(){
+          let state = DEFAULT
+          try{
+            const raw = localStorage.getItem(LS_KEY)
+            if(raw) state = JSON.parse(raw)
+          }catch(e){ console.warn('Invalid state',e) }
+          if(initialsEl) initialsEl.value = state.initials||''
+          if(bgcolorEl) bgcolorEl.value = state.bg||DEFAULT.bg
+          if(initialsColorEl) initialsColorEl.value = state.initialsColor || '#ffffff'
+          if(displayNameEl) displayNameEl.value = state.name||''
+          if(state.photo) setPhoto(state.photo)
+          else setInitials(state.initials||DEFAULT.initials, state.bg||DEFAULT.bg, state.initialsColor||'#ffffff')
+          if(previewName) previewName.textContent = (displayNameEl && displayNameEl.value) ? displayNameEl.value : DEFAULT.name
+          if(previewAvatar){ previewAvatar.style.background = (bgcolorEl?bgcolorEl.value:DEFAULT.bg); previewAvatar.style.color = (initialsColorEl && initialsColorEl.value) ? initialsColorEl.value : '#ffffff'; previewAvatar.textContent = (initialsEl && initialsEl.value)?initialsEl.value.toUpperCase():DEFAULT.initials }
+        }
+
+        // Event listeners (guarded)
+        if(fileEl){
+          fileEl.addEventListener('change', ()=>{
+            const f = fileEl.files && fileEl.files[0]
+            if(!f) return
+            const reader = new FileReader()
+            reader.onload = e=> setPhoto(e.target.result)
+            reader.readAsDataURL(f)
+          })
+        }
+
+        if(uploadBtn){ uploadBtn.addEventListener('click', ()=> fileEl && fileEl.click()); uploadBtn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); fileEl && fileEl.click() } }) }
+        if(removePhotoBtn) removePhotoBtn.addEventListener('click', ()=>{ if(avatarEl) avatarEl.removeAttribute('data-photo'); setInitials((initialsEl && initialsEl.value ? initialsEl.value.toUpperCase() : DEFAULT.initials), (bgcolorEl?bgcolorEl.value:DEFAULT.bg), (initialsColorEl && initialsColorEl.value)?initialsColorEl.value:'#ffffff'); showStatus('Foto eliminada') })
+        if(saveBtn) saveBtn.addEventListener('click', save)
+        if(resetBtn) resetBtn.addEventListener('click', ()=>{ if(confirm('Restablecer valores por defecto?')){ try{ localStorage.removeItem(LS_KEY) }catch(e){} if(initialsEl) initialsEl.value = DEFAULT.initials; if(bgcolorEl) bgcolorEl.value = DEFAULT.bg; if(initialsColorEl) initialsColorEl.value = '#ffffff'; if(displayNameEl) displayNameEl.value = DEFAULT.name; if(avatarEl) avatarEl.removeAttribute('data-photo'); setInitials(DEFAULT.initials, DEFAULT.bg); showStatus('Restablecido') } })
+
+        if(initialsEl){
+          initialsEl.addEventListener('input', ()=>{
+            try{ initialsEl.value = initialsEl.value.replace(/[^\p{L}\p{N}]/gu,'') }catch(e){ initialsEl.value = initialsEl.value.replace(/[^0-9A-Za-z]/g,'') }
+            initialsEl.value = initialsEl.value.slice(0,2)
+            renderInitials()
+          })
+        }
+
+        if(bgcolorEl) bgcolorEl.addEventListener('input', renderInitials)
+        if(initialsColorEl) initialsColorEl.addEventListener('input', renderInitials)
+  if(displayNameEl) displayNameEl.addEventListener('input', ()=>{ if(previewName) previewName.textContent = displayNameEl.value || DEFAULT.name })
+
+        // Init
+        createMainColors()
+        load()
+
+      })()
+    </script>
+    <script>
+      // Back button behavior: intenta regresar a la página de origen (Registros o SUIC Data)
+      (function(){
+        const backBtn = document.getElementById('backBtn')
+        if(!backBtn) return
+        function targetFromReferrer(){
+          try{
+            const ref = document.referrer || ''
+            if(!ref) return null
+            const u = new URL(ref)
+            const p = u.pathname.toLowerCase()
+            if(p.endsWith('/registros.html') || p.endsWith('registros.html')) return 'Registros.html'
+            if(p.endsWith('/suic data.html') || p.endsWith('suic data.html') || p.endsWith('/suic%20data.html')) return 'SUIC Data.html'
+            // fallback to matching filenames
+            if(p.includes('registros')) return 'Registros.html'
+            if(p.includes('suic')) return 'SUIC Data.html'
+            return null
+          }catch(e){ return null }
+        }
+
+        backBtn.addEventListener('click', ()=>{
+          const target = targetFromReferrer()
+          if(target){ window.location.href = target; return }
+          // si no hay referrer o no se reconoce, intenta history.back()
+          if(window.history && window.history.length>1){ window.history.back(); setTimeout(()=>{ window.location.href = 'SUIC Data.html' }, 600) }else{ window.location.href = 'SUIC Data.html' }
+        })
+      })()
+    </script>
+</body>
+</html>

@@ -78,23 +78,22 @@ body.dark-theme #diferencia-horas {
   position: absolute;
   right: 20px;
   z-index: 2;
-  background: var(--action-bg);
+  background: #fff;
   border-radius: 0 40px 40px 0;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  border: 2px solid var(--action-border);
+  border: 2px solid #e0e0e0;
   padding: 16px 24px 16px 12px;
   display: flex;
   align-items: center;
 }
 .task-card {
   position: relative;
-  max-width: 1100px; /* Aumentado para pantallas anchas */
-  width: 100%;
+  max-width: 1100px;
   margin: auto;
   background: #ffffff;
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 2rem; /* un poco más de espacio interior */
+  padding: 2rem;
 }
 .iconos-acciones-papelera {
   position: absolute;
@@ -105,24 +104,29 @@ body.dark-theme #diferencia-horas {
 }
 .iconos-acciones-descargar {
   position: absolute;
-  /* Anclar respecto al top del contenedor en lugar de usar bottom.
-     Usar bottom hacía que al aumentar la altura del card (por el textarea)
-     la posición vertical cambiara. Con top se mantiene fija.
-  */
-  top: 90px;
+  bottom: 570px;
   right: -75px;
   z-index: 10;
   margin-left: 4rem;
 }
-
-/* Icon colors use variables so they change with the theme */
+body.dark-theme .iconos-acciones-wrapper {
+  background: #222;
+  border: 2px solid #444;
+}
+/* Icono papelera y descargar con color según tema */
 .icono-papelera, .icono-descargar {
-  color: var(--action-icon);
+  color: #000000;
   transition: color 0.2s, transform 0.2s;
 }
 .icono-papelera:hover, .icono-descargar:hover {
-  color: var(--action-icon-hover);
+  color: #444444;
   transform: scale(1.15);
+}
+body.dark-theme .icono-papelera, body.dark-theme .icono-descargar {
+  color: #ffffff;
+}
+body.dark-theme .icono-papelera:hover, body.dark-theme .icono-descargar:hover {
+  color: #ffd700;
 }
 /* Color personalizado para el texto del lema */
 /* Reset básico */
@@ -145,7 +149,7 @@ body.dark-theme #diferencia-horas {
   align-items: center;
   padding: 0 40px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 1000; /* Mantener por debajo del modal */
+  z-index: 9999;
   color: #222;
 }
 /* Barra superior modo oscuro */
@@ -199,29 +203,6 @@ body.dark-theme .header-bar {
   transform: translateX(-50%) translateY(0);
 }
 
-/* Ajuste: mover un poco más a la izquierda el desplegable de la SECCIÓN 1
-   Si quieres otro elemento, cambia nth-child(1) por el índice correspondiente
-   o usa una clase específica en el HTML. */
-.menu-item:nth-child(odd) .submenu {
-  /* Selecciona los .menu-item que están en posiciones impares (1,3,5...) */
-  /* Así cubrimos los separadores (.divider) entre items y el enlace en la posición 5 */
-  transform: translateX(-5%) translateY(10px);
-}
-.menu-item:nth-child(odd):hover .submenu {
-  transform: translateX(-5%) translateY(0);
-}
-
-/* Mover solo el desplegable de 'Herramientas' (primer .menu-item) un poco a la derecha
-   Usamos :first-of-type para ser específicos y no afectar otros items. */
-.menu-item:first-of-type .submenu {
-  /* cuando está oculto, lo preposicionamos ligeramente a la derecha */
-  transform: translateX(10%) translateY(10px);
-}
-.menu-item:first-of-type:hover .submenu {
-  /* al mostrarlo, lo mantenemos a la derecha pero con la transición vertical normal */
-  transform: translateX(10%) translateY(0);
-}
-
 .submenu a:hover {
   background-color: #ffffff;
 }
@@ -266,69 +247,6 @@ body.dark-theme .header-bar {
   padding: 0;
 }
 
-/* Contenedor para el autoborrador: a la izquierda del toggle-theme */
-.auto-delete-toggle {
-  position: fixed;
-  /* Colocar justo debajo del botón de tema: mismo right, top desplazado */
-  top: calc(25rem + 72px);
-  right: 0.3rem; /* alinea con el toggle de tema */
-  z-index: 1000;
-}
-
-/* Reusar la misma forma que #toggle-theme pero apuntando a la izquierda */
-/* Autoborrador - estado inactivo: verde claro (aplica en claro y oscuro) */
-#toggle-autodelete {
-  width: 60px;
-  height: 60px;
-  /* Verde claro agradable y legible */
-  background-color: #A7E6A1; /* verde claro */
-  color: #06380a; /* texto oscuro para contraste sobre verde claro */
-  border: none;
-  border-right: 4px solid #8ccf8a; /* borde ligeramente más oscuro */
-  border-radius: 30px 0 0 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(6,56,10,0.08);
-  transition: background-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
-  overflow: hidden;
-
-  margin: 0;
-  padding: 0;
-}
-
-/* Icono cambia color cuando está activo */
-/* Estado activo / inactivo por tema (autoborrador)
-   - Inactivo: verde claro
-   - Activo: rojo
-   Definimos reglas separadas para modo claro y oscuro para garantizar contraste. */
-
-/* Modo claro: inactivo = verde claro, activo = rojo */
-body.light-theme #toggle-autodelete {
-  background-color: #A7E6A1; /* verde claro */
-  color: #06380a; /* texto oscuro para contraste sobre verde */
-  border-right-color: #8ccf8a;
-  box-shadow: 0 2px 6px rgba(6,56,10,0.08);
-}
-body.light-theme #toggle-autodelete.active {
-  background-color: #FF6B6B; /* rojo claro */
-  color: #ffffff;
-  border-right-color: #b33;
-}
-
-/* Modo oscuro: inactivo = verde más vibrante (sobre fondo oscuro), activo = rojo más profundo */
-body.dark-theme #toggle-autodelete {
-  background-color: #2FB85B; /* verde vibrante */
-  color: #00320a; /* texto oscuro para legibilidad */
-  border-right-color: #27a14e;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-}
-body.dark-theme #toggle-autodelete.active {
-  background-color: #D9534F; /* rojo profundo */
-  color: #ffffff;
-  border-right-color: #b33;
-}
 
 /* Tema claro */
 body.light-theme {
@@ -339,11 +257,6 @@ body.light-theme {
   --button-text: #333;
   --border-color: #ccc;
   --shadow-color: rgba(0, 0, 0, 0.1);
-  /* Variables para elementos de acción (iconos y botones) */
-  --action-bg: #ffffff;
-  --action-border: #e0e0e0;
-  --action-icon: #000000;
-  --action-icon-hover: #444444;
 }
 
 body.light-theme .header-bar {
@@ -354,16 +267,11 @@ body.light-theme .header-bar {
 body.dark-theme {
   /* ...otras variables... */
   background-color: #000000;
-  color: #ffffff;
+  color: #000000;
   --accent-color: #222;
-  --button-text: #ffffff;
+  --button-text: #000000;
   --border-color: #444;
   --shadow-color: rgba(0, 0, 0, 0.6);
-  /* Variables para elementos de acción en modo oscuro */
-  --action-bg: #222222;
-  --action-border: #444444;
-  --action-icon: #ffffff;
-  --action-icon-hover: #ffd700;
 }
 
 .header-bar.dark-theme {
@@ -578,19 +486,11 @@ body.dark-theme label[for="hora-final"] {
 #documento    { max-width: 400px; }
 #asignado     { max-width: 410px; }
 #prioridad    { max-width: 450px; }
-
-#inicio,
-#final        { max-width: 140px; }
+#fecha        { max-width: 420px; }
+#inicio, 
+#final        { max-width: 180px; }
 #hora-inicio,
-#hora-final   { max-width: 1400px; min-width: 170px; }
-
-/* Asegurar que en pantallas pequeñas no se desborde el layout */
-@media (max-width: 768px) {
-  #inicio, #final, #hora-inicio, #hora-final {
-    max-width: 100%;
-    min-width: 0;
-  }
-}
+#hora-final   { max-width: 140px; }
 
 /* Pie */
 .hint {
@@ -609,41 +509,101 @@ body.dark-theme label[for="hora-final"] {
   margin-top: 2rem;
 }
 
-/* Botones principales */
-.comentario-centro button {
-  padding: 0.6rem 1.2rem;
-  font-size: 1rem;
-  border-radius: 6px;
+/* Sistema elegante de botones: variantes, sombras y micro-animaciones */
+:root{
+  --btn-radius: 10px;
+  --btn-padding: 0.7rem 1.4rem;
+  --btn-font-size: 1rem;
+  --btn-transition: 300ms cubic-bezier(.2,.9,.3,1);
+}
+
+/* Base para todos los botones interactivos */
+button, .btn, input[type="button"], .comentario-centro button {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding: var(--btn-padding);
+  font-size: var(--btn-font-size);
+  border-radius: var(--btn-radius);
   border: none;
-  color: white;
+  color: #fff;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--btn-transition), box-shadow var(--btn-transition), filter var(--btn-transition);
+  box-shadow: 0 6px 18px rgba(29,30,34,0.12);
+  will-change: transform, box-shadow;
+  backface-visibility: hidden;
 }
 
-/* Estilos específicos por función */
-button[onclick="descargarDatos()"] {
-  background-color: #3498db;
+/* Sheen / brillo que se desliza al hacer hover */
+button::after, .btn::after, input[type="button"]::after {
+  content: "";
+  position: absolute;
+  left: -75%;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(120deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06), rgba(255,255,255,0.18));
+  transform: skewX(-20deg);
+  transition: left 450ms var(--btn-transition);
+  pointer-events: none;
 }
 
-button[onclick="borrarDatos()"] {
-  background-color: #e74c3c;
+button:hover::after, .btn:hover::after, input[type="button"]:hover::after {
+  left: 120%;
 }
 
-button[onclick="borrarHistorial()"] {
-  background-color: #DA291C;
+/* Micro-interacciones */
+button:hover, .btn:hover, input[type="button"]:hover {
+  transform: translateY(-3px) scale(1.02);
+  filter: saturate(1.05);
 }
 
-button[onclick="guardarFormulario()"] {
-  background-color: #0097A9;
+button:active, .btn:active, input[type="button"]:active {
+  transform: translateY(1px) scale(0.995);
+  box-shadow: 0 4px 12px rgba(29,30,34,0.15);
 }
 
-button[onclick="descargarTodoCSV()"] {
-  background-color: #FF8200;
+button:focus, .btn:focus, input[type="button"]:focus {
+  outline: none;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.14), 0 0 0 4px rgba(0,0,0,0.06);
 }
 
-/* Hover para todos los botones */
-.comentario-centro button:hover {
-  opacity: 0.9;
+/* Variantes cromáticas (no neutras ni grises) */
+.btn--primary, button[onclick="guardarFormulario()"] {
+  background: linear-gradient(135deg, #00A3B5 0%, #007B9E 100%);
+  box-shadow: 0 12px 30px rgba(0,163,181,0.18);
+}
+
+.btn--secondary, button[onclick="descargarDatos()"] {
+  background: linear-gradient(135deg, #377DFF 0%, #2A5BFF 100%);
+  box-shadow: 0 12px 30px rgba(53,114,255,0.16);
+}
+
+.btn--danger, button[onclick="borrarDatos()"], button[onclick="borrarHistorial()"] {
+  background: linear-gradient(135deg, #ff5f6d 0%, #e83e3e 100%);
+  box-shadow: 0 12px 30px rgba(232,62,62,0.16);
+}
+
+.btn--accent, button[onclick="descargarTodoCSV()"] {
+  background: linear-gradient(135deg, #ff9a00 0%, #ff6a00 100%);
+  box-shadow: 0 12px 30px rgba(255,110,0,0.16);
+}
+
+/* Si quieres forzar un color oscuro para texto en botones claros (opcional) */
+.btn--light {
+  background: linear-gradient(135deg,#ffffff 0%, #f2f6ff 100%);
+  color: #1b2430;
+  box-shadow: 0 8px 20px rgba(30,40,60,0.06);
+}
+
+/* Ajustes responsive */
+@media (max-width: 480px) {
+  button, .btn, .comentario-centro button {
+    padding: 0.56rem 1rem;
+    font-size: 0.95rem;
+  }
 }
 
 /* Responsive */
@@ -702,44 +662,13 @@ button[onclick="descargarTodoCSV()"] {
 }
 
 .grupo-tiempo select option {
-  background-color: #d8d8d8;
+  background-color: #f0f0f0;
   color: #000000;
 }
 
 #hora-inicio,
 #hora-final {
   text-align: center;
-}
-
-/* Forzar ancho de los inputs de hora dentro de la barra de tiempo
-   para que el nuevo formato "HH:MM:SS DD/MM/AAAA" no se corte.
-   Se usa flex: none para evitar que el contenedor flex los reduzca. */
-.barra-tiempo .grupo-tiempo input#hora-inicio,
-.barra-tiempo .grupo-tiempo input#hora-final {
-  width: 170px; /* ancho fijo deseado */
-  min-width: 80px;
-  flex: none; /* evitar que el flex los encoja */
-  box-sizing: border-box;
-  padding: 0.5rem 0.6rem;
-}
-
-.barra-tiempo .grupo-tiempo select#inicio,
-.barra-tiempo .grupo-tiempo select#final {
-  flex: none; /* mantener su tamaño y no comprimir inputs */
-  min-width: 140px;
-  width: 140px;
-}
-
-@media (max-width: 768px) {
-  .barra-tiempo .grupo-tiempo input#hora-inicio,
-  .barra-tiempo .grupo-tiempo input#hora-final {
-    width: 100%;
-    min-width: 0;
-  }
-  .barra-tiempo .grupo-tiempo select#inicio,
-  .barra-tiempo .grupo-tiempo select#final {
-    width: auto;
-  }
 }
 
 .version-box {
@@ -777,229 +706,179 @@ button[onclick="descargarTodoCSV()"] {
 .barra-tiempo {
   margin-top: 50px; /* Ajusta el valor según el espacio que necesites */
 }
-
-/* Estilos para la tabla de registros en Registros.html */
-.registros-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  overflow: hidden;
-}
-.registros-table th,
-.registros-table td {
-  padding: 0.6rem 0.8rem;
-  border-bottom: 1px solid #f0f0f0;
-  text-align: left;
-  font-size: 0.95rem;
-}
-.registros-table thead th {
-  background: #f6f8fb;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-.registros-table tbody tr:hover {
-  background: #fbfdff;
-}
-
-/* Responsive: convertir en tarjetas en pantallas estrechas */
-@media (max-width: 920px) {
-  .registros-table,
-  .registros-table thead,
-  .registros-table tbody,
-  .registros-table th,
-  .registros-table td,
-  .registros-table tr {
-    display: block;
-  }
-
-  .registros-table thead tr { display: none; }
-
-  .registros-table tbody tr {
-    margin-bottom: 1rem;
-    background: #fff;
-    border: 1px solid #e9eef5;
-    border-radius: 8px;
-    padding: 0.6rem;
-  }
-
-  .registros-table td {
-    padding: 0.4rem 0.6rem;
-    border: none;
-    position: relative;
-  }
-
-  .registros-table td::before {
-    content: attr(data-label);
-    font-weight: 700;
-    display: inline-block;
-    width: 140px;
-    color: #333;
-  }
-}
-
-/* Estilos para la barra de filtros de columnas */
-#column-filters {
-  background: transparent;
-  padding: 0.4rem 0.2rem;
-}
-#column-filters label {
-  font-size: 0.95rem;
-}
-#column-filters input[type="checkbox"] {
-  transform: scale(0.95);
-  margin-left: 0.25rem;
-  margin-right: 0.15rem;
-}
-
-.column-filters-dropdown {
-  position: absolute;
-  top: 38px;
-  left: 0;
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-  padding: 0.6rem;
-  border-radius: 8px;
-  min-width: 260px;
-  z-index: 2000;
-}
-
-/* Botones reutilizables */
-.btn {
-  display: inline-flex;
+/* Estilos exclusivos para la página Registros: ampliar modal de edición sin afectar SUIC Data.html */
+.registros-page #edit-modal {
+  /* el modal usa display:flex en JS; asegurar posicionamiento centrado */
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.7rem;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.95rem;
+  justify-content: center;
 }
-.btn svg { width: 16px; height: 16px; display:block; }
-.btn:focus { outline: 2px solid rgba(0,150,170,0.2); outline-offset: 2px; }
-
-.btn-primary { background: linear-gradient(180deg,#008dae,#00788f); color: #fff; border-color: rgba(0,0,0,0.06); }
-.btn-ghost { background: transparent; color: #222; border-color: #ddd; }
-.btn-danger { background: linear-gradient(180deg,#e74c3c,#c92b20); color: #fff; border-color: rgba(0,0,0,0.06); }
-.btn-neutral { background: #f5f7fa; color: #222; border-color: #e6e9ef; }
-
-/* Ajustes para botones pequeños dentro de la tabla */
-.btn-sm { padding: 0.25rem 0.45rem; font-size: 0.88rem; border-radius: 6px; }
-.btn-sm svg { width: 14px; height: 14px; }
-
-/* Minimal icon style for inline use */
-.icon-left { margin-right: 0.4rem; }
-
-.column-filters-dropdown div {
-  white-space: nowrap;
+.registros-page #edit-modal .modal-content {
+  width: 95%;         /* ancho relativo por defecto */
+  max-width: 1200px;  /* aumentar el max-width para que sea más ancho que el original */
+  margin: 1rem;       /* pequeño margen para móviles */
+  box-sizing: border-box;
 }
 
-/* ------------------ Dark mode enhancements ------------------ */
-body.dark-theme .btn {
-  border-color: rgba(255,255,255,0.06);
-  color: #e6eef6;
-}
-
-body.dark-theme .btn-neutral {
-  background: #162029;
-  color: #e6eef6;
-  border-color: #223038;
-}
-
-body.dark-theme .btn-primary {
-  background: linear-gradient(180deg,#007b8f,#00636f);
-  color: #fff;
-}
-
-body.dark-theme .btn-danger {
-  background: linear-gradient(180deg,#d9534f,#b93a34);
-  color: #fff;
-}
-
-/* Tabla en modo oscuro */
-body.dark-theme .registros-table {
-  background: #071019;
-  border-color: #122025;
-}
-body.dark-theme .registros-table thead th {
-  background: linear-gradient(180deg,#071219,#0b1620);
-  color: #cfeaf6;
-}
-body.dark-theme .registros-table td {
-  color: #cfeaf6;
-  border-bottom-color: #0e1a22;
-}
-body.dark-theme .registros-table tbody tr:hover {
-  background: #071923;
-}
-
-/* Dropdown en modo oscuro */
-body.dark-theme .column-filters-dropdown {
-  background: #07121a;
-  color: #d9eef6;
-  border-color: #12303a;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-}
-
-/* Inputs y selects en dark */
-body.dark-theme input[type="search"],
-body.dark-theme select,
-body.dark-theme input[type="text"],
-body.dark-theme textarea {
-  background: #d8d8d8;
-  color: #000000;
-  border: 1px solid #12303a;
-}
-
-/* Header bar dark adjustments */
-body.dark-theme .header-bar {
-  background: #dddddd;
-  color: #000000;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.6);
-}
-
-/* Theme toggle button contrast */
-body.dark-theme #toggle-theme {
-  background-color: #222;
-  color: #000000;
-  border-right-color: #444;
-}
-
-/* Ensure dropdown checkbox labels are readable */
-body.dark-theme .column-filters-dropdown label { color: #d7eef6; }
-
-/* Make small buttons stand out on dark backgrounds */
-body.dark-theme .btn-sm { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.03); }
-
-/* End dark mode enhancements */
-
-/* Modal de edición */
-.modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 99999; }
-.modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.45); z-index: 99990; }
-.modal-content { position: relative; background: #fff; border-radius: 12px; padding: 1rem 1.25rem; width: 94%; max-width: 760px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 99999; }
-.modal-content header h2 { margin: 0; font-size: 1.1rem; }
-.modal-content input, .modal-content textarea { width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid #ddd; background: #fafafa; }
-
-body.dark-theme .modal-content { background: #071219; color: #e6eef6; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
-body.dark-theme .modal-content input, body.dark-theme .modal-content textarea { background: #07121a; color: #e6eef6; border: 1px solid #13303a; }
-
-@media (max-width: 520px) {
-  .modal-content { padding: 0.8rem; }
-  .modal-content input, .modal-content textarea { padding: 0.5rem; }
-}
-
-/* Breakpoint para pantallas grandes: dar más ancho al modal sin romper diseño */
-@media (min-width: 1100px) {
-  .modal-content {
-    max-width: 1100px; /* modal más ancho en pantallas grandes */
-    padding: 1.25rem 1.5rem;
+/* Ajustes responsive: mantener buena visual en móviles */
+@media (max-width: 900px) {
+  .registros-page #edit-modal .modal-content {
+    width: 98%;
+    max-width: 900px;
+    padding: 1rem;
   }
-  .task-card {
-    padding: 2.5rem;
-    max-width: 1100px; /* permitir layout más espacioso en pantallas muy anchas */
-  }
+}
+
+/* Campos Inicio/Final: hacer inputs y selects más estrechos solo en la página Registros */
+.registros-page .grupo-tiempo input[type="text"],
+.registros-page #edit-hora-inicio,
+.registros-page #edit-hora-final {
+  max-width: 170px; /* reducir/anclar ancho de los inputs de hora (ahora 170px) */
+}
+.registros-page .grupo-tiempo select,
+.registros-page #edit-inicio,
+.registros-page #edit-final {
+  min-width: 170px; /* selects ligeramente reducidos (anclados a 170px) */
+  max-width: 170px;
+}
+
+/* Centrar contenido dentro de los inputs/selects de hora/fecha en el modal */
+.registros-page .grupo-tiempo input#edit-hora-inicio,
+.registros-page .grupo-tiempo input#edit-hora-final {
+  text-align: center; /* centrar texto dentro del input */
+  display: inline-block;
+  width: 170px !important; /* ancho fijo por petición (solo en modal Registros) */
+}
+.registros-page .grupo-tiempo select#edit-inicio,
+.registros-page .grupo-tiempo select#edit-final {
+  text-align: center; /* centrar texto dentro del select en navegadores que lo soporten */
+  min-width: 170px !important;
+  max-width: 170px !important;
+}
+
+/* Reglas altamente específicas para sobrescribir estilos inline aplicados en el HTML
+   Algunas etiquetas dentro del modal (en Registros.html) definen `style="min-width:140px;"`
+   usando !important y selectores más específicos garantizamos 170px exactos. */
+.registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo input#edit-hora-inicio,
+.registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo input#edit-hora-final {
+  width: 170px !important;
+  max-width: 170px !important;
+}
+.registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo select#edit-inicio,
+.registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo select#edit-final {
+  min-width: 170px !important;
+  max-width: 170px !important;
+}
+
+/* Clase utilitaria para forzar 170px en inputs/selects dentro del modal Registros */
+.registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo .fixed-170,
+.registros-page .fixed-170 {
+  width: 170px !important;
+  min-width: 170px !important;
+  max-width: 170px !important;
+}
+
+/* Centrar el texto dentro de los inputs y selects (Inicio/Final) */
+.registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo .fixed-170,
+.registros-page .fixed-170 {
+  text-align: center !important; /* centrar texto horizontalmente */
+  vertical-align: middle !important;
+}
+
+/* Asegurar que los selects muestren el texto centrado en la mayoría de navegadores */
+.registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo select.fixed-170 {
+  -moz-text-align-last: center !important; /* Firefox */
+  text-align-last: center !important; /* Otros navegadores que lo soporten */
+}
+
+/* Ajuste para inputs de tipo text: mantener line-height cercano a la altura para apariencia centrada verticalmente */
+.registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo input.fixed-170 {
+  line-height: 1.8 !important;
+  padding-top: 0.2rem !important;
+  padding-bottom: 0.2rem !important;
+}
+
+/* Forzar altura y centrado vertical consistente */
+.registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo input.fixed-170,
+.registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo select.fixed-170 {
+  height: 34px !important;
+  line-height: 34px !important;
+  padding-left: 0.6rem !important;
+  padding-right: 0.6rem !important;
+  box-sizing: border-box !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+  font-size: 0.95rem !important;
+}
+
+/* Asegurar que las opciones del select también se centren en navegadores que lo soporten */
+.registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo select.fixed-170 option {
+  text-align: center !important;
+  line-height: 34px !important;
+  font-size: 0.95rem !important;
+}
+
+/* Quitar flecha por defecto en algunos navegadores para facilitar el centrado visual (opcional) */
+.registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo select.fixed-170::-ms-expand {
+  display: none;
+}
+
+/* Mejoras para centrado visual del SELECT en todos los navegadores:
+   1) quitar apariencia nativa
+   2) añadir una flecha SVG como background (controlada por CSS)
+   3) ajustar padding-right para que el texto no choque con la flecha
+*/
+.registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo select.fixed-170 {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  /* SVG de flecha hacia abajo en data URI (negra translúcida) */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%23000' fill-opacity='0.6' d='M6 8L0 0h12z'/></svg>");
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 12px 8px !important;
+  padding-right: 34px !important; /* dejar espacio para la flecha */
+  text-align-last: center !important;
+  -moz-text-align-last: center !important;
+  height: 34px !important;
+  line-height: 34px !important;
+}
+
+/* Ajuste fino para inputs: quitar padding vertical y usar line-height exacto */
+.registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo input.fixed-170 {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  height: 36px !important;
+  line-height: 36px !important;
+}
+
+/* --- Replica exacta del comportamiento visual de SUIC Data para Hora/Inicio y Hora/Final ---
+   Se copian las reglas de `styles.css` pero apuntando a los IDs del modal de Registros
+   para que el aspecto sea idéntico sin tocar el CSS original. */
+.registros-page .barra-tiempo .grupo-tiempo input#edit-hora-inicio,
+.registros-page .barra-tiempo .grupo-tiempo input#edit-hora-final {
+  width: 170px !important;
+  min-width: 80px !important;
+  flex: none !important; /* evitar que el flex los encoja */
+  box-sizing: border-box !important;
+  padding: 0.5rem 0.6rem !important;
+  text-align: center !important; /* centrar texto como en SUIC Data */
+}
+
+.registros-page .barra-tiempo .grupo-tiempo select#edit-inicio,
+.registros-page .barra-tiempo .grupo-tiempo select#edit-final {
+  flex: none !important; /* mantener su tamaño y no comprimir inputs */
+  min-width: 140px !important;
+  width: 140px !important;
+  text-align-last: center !important;
+  -moz-text-align-last: center !important;
+}
+
+/* Aplicar el mismo estilo visual de 'Tiempo: HH:MM:SS' usado en SUIC Data */
+.registros-page #edit-diferencia-horas {
+  color: #0097A9; /* mismo color que #diferencia-horas en styles.css */
+  font-weight: bold;
+}
+.registros-page body.dark-theme #edit-diferencia-horas,
+body.dark-theme .registros-page #edit-diferencia-horas {
+  color: #FFD700 !important; /* misma prioridad para modo oscuro */
 }
