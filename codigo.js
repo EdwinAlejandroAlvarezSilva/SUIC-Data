@@ -172,11 +172,20 @@ function _applySerializedFields(data) {
 
 function _saveDraft() {
   try {
+    // Calcular el tiempo total tal como debería verse en el momento del guardado.
+    // Si el cronómetro está corriendo, incluir el tiempo transcurrido desde la
+    // última reanudación (_lastStartTs). De este modo, al restaurar el borrador
+    // se recupera el tiempo exacto mostrado al usuario cuando se guardó.
+    let totalSeconds = _elapsedSeconds || 0;
+    if (_running && _lastStartTs) {
+      totalSeconds += Math.floor((Date.now() - _lastStartTs) / 1000);
+    }
+
     const draft = {
       timestamp: Date.now(),
       fields: _serializeFormFields(),
       chrono: {
-        elapsedSeconds: _elapsedSeconds,
+        elapsedSeconds: totalSeconds,
         running: _running,
         lastStartTs: _lastStartTs
       }
@@ -213,21 +222,13 @@ function _restoreDraftPrompt() {
         const wasRunning = !!draft.chrono.running;
         const storedLast = draft.chrono.lastStartTs ? Number(draft.chrono.lastStartTs) : null;
 
-        if (wasRunning && storedLast) {
-          // Si el cronómetro estaba corriendo al cerrarse, calculamos
-          // el tiempo transcurrido hasta ahora y lo dejamos en pausa.
-          // Esto evita reanudar automáticamente la cuenta; el usuario
-          // deberá pulsar "Continuar" para volver a iniciarlo.
-          const extra = Math.floor((Date.now() - storedLast) / 1000);
-          _elapsedSeconds = storedElapsed + extra;
-          _running = false; // NO reanudar automáticamente
-          _lastStartTs = null;
-        } else {
-          // Si no estaba corriendo, restaurar el valor acumulado y mantener en pausa
-          _elapsedSeconds = storedElapsed;
-          _running = false;
-          _lastStartTs = null;
-        }
+        // Restaurar sólo el tiempo exacto guardado (sin sumar el tiempo transcurrido
+        // entre el momento del guardado y la apertura de la página). En todos los
+        // casos dejamos el cronómetro en pausa para que el usuario decida si
+        // desea reanudarlo manualmente.
+        _elapsedSeconds = storedElapsed;
+        _running = false;
+        _lastStartTs = null;
 
         // Actualizar la UI con el tiempo acumulado (detenido)
         _updateChronDisplay();

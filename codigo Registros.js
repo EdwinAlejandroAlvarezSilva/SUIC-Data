@@ -452,11 +452,16 @@ function _saveModalDraft() {
   try {
     const modal = document.getElementById('edit-modal');
     if (!modal || modal.style.display === 'none') return;
+    // Guardar el tiempo total tal como se muestra en el modal en el momento del autosave.
+    let totalSeconds = _modalElapsedSeconds || 0;
+    if (_modalRunning && _modalLastStartTs) {
+      totalSeconds += Math.floor((Date.now() - _modalLastStartTs) / 1000);
+    }
     const draft = {
       timestamp: Date.now(),
       fields: _serializeModalFields(),
       chrono: {
-        elapsedSeconds: _modalElapsedSeconds,
+        elapsedSeconds: totalSeconds,
         running: _modalRunning,
         lastStartTs: _modalLastStartTs
       }
@@ -487,16 +492,13 @@ function _restoreModalDraftPrompt() {
         const storedElapsed = Number(draft.chrono.elapsedSeconds) || 0;
         const wasRunning = !!draft.chrono.running;
         const storedLast = draft.chrono.lastStartTs ? Number(draft.chrono.lastStartTs) : null;
-        if (wasRunning && storedLast) {
-          const extra = Math.floor((Date.now() - storedLast) / 1000);
-          _modalElapsedSeconds = storedElapsed + extra;
-          _modalRunning = false;
-          _modalLastStartTs = null;
-        } else {
-          _modalElapsedSeconds = storedElapsed;
-          _modalRunning = false;
-          _modalLastStartTs = null;
-        }
+        // Restaurar sólo el tiempo exacto guardado (sin sumar el tiempo transcurrido
+        // entre el momento del guardado y la apertura de la página). En todos los
+        // casos dejamos el cronómetro en pausa para que el usuario decida si
+        // desea reanudarlo manualmente.
+        _modalElapsedSeconds = storedElapsed;
+        _modalRunning = false;
+        _modalLastStartTs = null;
         _updateModalChronDisplay();
         // Asegurar que el hidden field edit-cronometro refleje el valor
         const cronEl = document.getElementById('edit-cronometro');
@@ -732,8 +734,7 @@ function colocarHoraModal(tipo) {
     const el = document.getElementById('edit-hora-final');
     if (el) el.value = valor;
   }
-  // recalcular diferencia
-  calcularDiferenciaModal();
+    // No recalculamos la diferencia aquí: el modal usa el cronómetro para mostrar el tiempo
 }
 
 // --- Cronómetro específico para el modal (mismo comportamiento que en codigo.js) ---
