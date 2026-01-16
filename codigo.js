@@ -471,25 +471,49 @@ function colocarHora(tipo) {
 }
 
 function descargarDatos() {
-  const campos = [
-    { id: "hora-inicio" }, { id: "inicio" }, { id: "hora-final" }, { id: "final" },
-    { id: "nombre" }, { id: "acciones" }, { id: "detalle" }, { id: "fallas" },
-    { id: "descripcion" }, { id: "comentarios" }, { id: "tiempo" }, { id: "actualizado" },
-    { id: "documentos" }, { id: "categoria" }, { id: "analista" }, { id: "documento" },
-      { id: "asignado" }, { id: "prioridad" }
+  // Encabezados exactos solicitados (orden fijo)
+  const encabezados = [
+    "Inicio", "Estado de Inicio", "Final", "Estado Final", "Nombre", "Acciones",
+    "Detalle de Solicitud", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión",
+    "Nuevo o Actualizado", "Cant Documentos", "Categoría", "Analista/Área",
+    "Nombre de Documento", "Asignado a", "Prioridad", "Tiempo (cronómetro)"
   ];
 
-  const encabezados = campos.map(c => `"${document.querySelector(`label[for="${c.id}"]`)?.innerText || c.id}"`).join(",");
-  const valores = campos.map(c => {
-    const el = document.getElementById(c.id);
-    if (!el) return '""';
-    if (el.tagName === "SELECT") {
-      return `"${el.options[el.selectedIndex]?.text || ""}"`;
-    }
-    return `"${el.value || ""}"`;
-  }).join(",");
+  // IDs correspondientes en el formulario (en el mismo orden, excepto la última columna que se calcula)
+  const ids = [
+    "hora-inicio", "inicio", "hora-final", "final", "nombre", "acciones",
+    "detalle", "fallas", "descripcion", "comentarios", "tiempo",
+    "actualizado", "documentos", "categoria", "analista", "documento",
+    "asignado", "prioridad"
+  ];
 
-  const contenidoCSV = `${encabezados}\n${valores}`;
+  const escapeCSV = (s) => '"' + String(s || '').replace(/"/g, '""') + '"';
+
+  const valores = ids.map(id => {
+    try {
+      const el = document.getElementById(id);
+      if (!el) return escapeCSV('');
+      if (el.tagName === 'SELECT') return escapeCSV(el.options[el.selectedIndex]?.text || '');
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return escapeCSV(el.value || '');
+      return escapeCSV(el.textContent || el.value || '');
+    } catch (e) { return escapeCSV(''); }
+  });
+
+  // Calcular tiempo del cronómetro al momento de la descarga
+  let cronometroStr = '';
+  try {
+    let total = _elapsedSeconds || 0;
+    if (_running && _lastStartTs) {
+      total += Math.floor((Date.now() - _lastStartTs) / 1000);
+    }
+    cronometroStr = _formatHHMMSS(total);
+  } catch (e) { cronometroStr = ''; }
+
+  valores.push(escapeCSV(cronometroStr));
+
+  const encabezadosCSV = encabezados.map(h => escapeCSV(h)).join(',');
+  const contenidoCSV = encabezadosCSV + '\n' + valores.join(',');
+
   const blob = new Blob([contenidoCSV], { type: "text/csv;charset=utf-8" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
@@ -549,7 +573,7 @@ const opcionesPorCategoria = {
     "Documento": ["Actualizar", "Dar formato SUIC", "Desactivar"],
     "Ficha": ["Actualizar Ficha", "Actualizar Registro del Caso", "Creación Ficha", "Creación Registro del Caso", "Desactivar Ficha", "Desactivar Registro del Caso", "Publicar Ficha", "Publicar Registro del Caso"],
     "Hojas de Venta": ["Desactivar", "Publicar"],
-    "INFO ATC": ["Crear Info ATC", "Desactivar", "Publicar"],
+    "INFO ATC": ["Actualizar Info ATC", "Crear Info ATC", "Desactivar"],
     "Otros": ["Capacitación", "Reunión", "Revisión de fallas", "Tiempo Fallas en el Portal", "Trabajos TI en MDY"],
     "Pop up": ["Diseñar y publicar", "Programar Alerta"],
     "Proyecto": ["Propuesta de Mejora", "Proyectos C&C"],
@@ -578,8 +602,20 @@ const opcionesPorCategoria = {
       });
     } else {
       const opcionesGenerales = [
-        "Actualizar", "Agregar Candidatos", "Capacitación", "Creación de Proceso",
-        "Desactivar", "Publicar Registro del Caso", "Reunión", "Tiempo Fallas en el Portal"
+        "Actualizar Ficha", "Actualizar Info ATC", "Actualizar listas",
+        "Actualizar Registro del Caso", "Agregar Candidatos",
+        "Ampliación de Proceso", "Asignar rol y organización",
+        "Atención Fallas", "Cambio de Correo", "Capacitación",
+        "Creación de Diagrama", "Creación de Proceso", "Creación Ficha",
+        "Creación Registro del Caso", "Crear Info ATC", "Dar formato SUIC",
+        "Desactivar", "Desactivar Ficha", "Desactivar Registro del Caso",
+        "Desactivar, eliminar usuarios", "Diseñar", "Diseñar y publicar",
+        "Envío Recordatorio", "Implementación Nuevas Opciones",
+        "Programar Alerta", "Propuesta", "Propuesta de Mejora",
+        "Proyectos C&C", "Publicar", "Publicar Ficha",
+        "Publicar Registro del Caso", "Reportes", "Reunión",
+        "Revisión de fallas", "Stock Diario (11092023)",
+        "Tiempo Fallas en el Portal", "Trabajos TI en MDY"
       ];
 
       opcionesGenerales.forEach(opcionTexto => {

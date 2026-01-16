@@ -7,23 +7,23 @@ function formatCell(value) {
 
 // Mapeo de opciones por categoría (replicado desde codigo.js para comportamiento consistente)
 const opcionesPorCategoria = {
-  "Accesos al Portal": ["Asignar rol y organización"],
-  "Banner": ["Actualizar", "Desactivar", "Diseñar", "Publicar"],
-  "Base Usuarios": ["Asignar rol y organización", "Desactivar, eliminar usuarios"],
-  "Bases": ["Actualizar", "Desactivar", "Publicar"],
-  "Boletín": ["Actualizar", "Diseñar y publicar"],
-  "Competencias": ["Agregar Candidatos", "Ampliación de Proceso", "Atención Fallas", "Cambio de Correo", "Creación de Proceso", "Envío Recordatorio", "Reportes"],
-  "Consolidado de Precios": ["Actualizar listas", "Implementación Nuevas Opciones", "Stock Diario (11092023)"],
-  "Diagrama Postventa": ["Actualizar", "Propuesta", "Publicar"],
-  "Diagrama Venta (Resumen NP)": ["Actualizar", "Creación de Diagrama", "Desactivar", "Publicar"],
-  "Documento": ["Actualizar", "Dar formato SUIC", "Desactivar"],
-  "Ficha": ["Actualizar Ficha", "Actualizar Registro del Caso", "Creación Ficha", "Creación Registro del Caso", "Desactivar Ficha", "Desactivar Registro del Caso", "Publicar Ficha", "Publicar Registro del Caso"],
-  "Hojas de Venta": ["Desactivar", "Publicar"],
-  "INFO ATC": ["Crear Info ATC", "Desactivar", "Publicar"],
-  "Otros": ["Capacitación", "Reunión", "Revisión de fallas", "Tiempo Fallas en el Portal", "Trabajos TI en MDY"],
-  "Pop up": ["Diseñar y publicar", "Programar Alerta"],
-  "Proyecto": ["Propuesta de Mejora", "Proyectos C&C"],
-  "Publicaciones": ["Publicar"],
+    "Accesos al Portal": ["Asignar rol y organización"],
+    "Banner": ["Actualizar", "Desactivar", "Diseñar", "Publicar"],
+    "Base Usuarios": ["Asignar rol y organización", "Desactivar, eliminar usuarios"],
+    "Bases": ["Actualizar", "Desactivar", "Publicar"],
+    "Boletín": ["Actualizar", "Diseñar y publicar"],
+    "Competencias": ["Agregar Candidatos", "Ampliación de Proceso", "Atención Fallas", "Cambio de Correo", "Creación de Proceso", "Envío Recordatorio", "Reportes"],
+    "Consolidado de Precios": ["Actualizar listas", "Implementación Nuevas Opciones", "Stock Diario (11092023)"],
+    "Diagrama Postventa": ["Actualizar", "Propuesta", "Publicar"],
+    "Diagrama Venta (Resumen NP)": ["Actualizar", "Creación de Diagrama", "Desactivar", "Publicar"],
+    "Documento": ["Actualizar", "Dar formato SUIC", "Desactivar"],
+    "Ficha": ["Actualizar Ficha", "Actualizar Registro del Caso", "Creación Ficha", "Creación Registro del Caso", "Desactivar Ficha", "Desactivar Registro del Caso", "Publicar Ficha", "Publicar Registro del Caso"],
+    "Hojas de Venta": ["Desactivar", "Publicar"],
+    "INFO ATC": ["Actualizar Info ATC", "Crear Info ATC", "Desactivar"],
+    "Otros": ["Capacitación", "Reunión", "Revisión de fallas", "Tiempo Fallas en el Portal", "Trabajos TI en MDY"],
+    "Pop up": ["Diseñar y publicar", "Programar Alerta"],
+    "Proyecto": ["Propuesta de Mejora", "Proyectos C&C"],
+    "Publicaciones": ["Publicar"],
 };
 
 function actualizarDetalleDatalist(valorCategoria, datalistId = 'detalles') {
@@ -40,8 +40,20 @@ function actualizarDetalleDatalist(valorCategoria, datalistId = 'detalles') {
       });
     } else {
       const opcionesGenerales = [
-        'Actualizar', 'Agregar Candidatos', 'Capacitación', 'Creación de Proceso',
-        'Desactivar', 'Publicar Registro del Caso', 'Reunión', 'Tiempo Fallas en el Portal'
+        "Actualizar Ficha", "Actualizar Info ATC", "Actualizar listas",
+        "Actualizar Registro del Caso", "Agregar Candidatos",
+        "Ampliación de Proceso", "Asignar rol y organización",
+        "Atención Fallas", "Cambio de Correo", "Capacitación",
+        "Creación de Diagrama", "Creación de Proceso", "Creación Ficha",
+        "Creación Registro del Caso", "Crear Info ATC", "Dar formato SUIC",
+        "Desactivar", "Desactivar Ficha", "Desactivar Registro del Caso",
+        "Desactivar, eliminar usuarios", "Diseñar", "Diseñar y publicar",
+        "Envío Recordatorio", "Implementación Nuevas Opciones",
+        "Programar Alerta", "Propuesta", "Propuesta de Mejora",
+        "Proyectos C&C", "Publicar", "Publicar Ficha",
+        "Publicar Registro del Caso", "Reportes", "Reunión",
+        "Revisión de fallas", "Stock Diario (11092023)",
+        "Tiempo Fallas en el Portal", "Trabajos TI en MDY"
       ];
       opcionesGenerales.forEach(opcionTexto => {
         const opcion = document.createElement('option');
