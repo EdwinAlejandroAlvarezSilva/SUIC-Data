@@ -64,6 +64,7 @@
 							#volver-container #btn-volver { padding: 0.5rem 0.8rem; transform: translateY(0); }
 						}
 		</style>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="registros-page">
 	<!-- Barra flotante superior centrada -->
@@ -145,13 +146,73 @@
 
 		<!-- Filtros de columnas: botón que despliega una lista -->
 		<div id="column-filters" style="margin-bottom:1rem; display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center; position:relative;">
-			<button id="btn-column-filters" class="btn btn-neutral" aria-expanded="false" aria-controls="column-filters-list" style="padding:0.4rem 0.6rem;"> 
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12 10 19 14 21 14 12 22 3"/></svg>
-				Filtros de columna
-				<small style="margin-left:6px; opacity:0.7;">▾</small>
-			</button>
-			<div id="column-filters-list" class="column-filters-dropdown" role="menu" aria-hidden="true" style="display:none;">
-				<!-- Los checkboxes se generarán dinámicamente aquí -->
+			<div style="position: relative;">
+				<button id="btn-column-filters" class="btn btn-neutral" aria-expanded="false" aria-controls="column-filters-list" style="padding:0.4rem 0.6rem;"> 
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12 10 19 14 21 14 12 22 3"/></svg>
+					Filtros de columna
+					<small style="margin-left:6px; opacity:0.7;">▾</small>
+				</button>
+				<div id="column-filters-list" class="column-filters-dropdown" role="menu" aria-hidden="true" style="display:none;">
+					<!-- Los checkboxes se generarán dinámicamente aquí -->
+				</div>
+			</div>
+
+			<!-- Botón Acciones -->
+			<div style="position: relative;">
+				<button id="btn-acciones" class="btn btn-neutral" aria-expanded="false" aria-controls="acciones-list" style="padding:0.4rem 0.6rem;">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+					Acciones
+					<small style="margin-left:6px; opacity:0.7;">▾</small>
+				</button>
+				<div id="acciones-list" class="column-filters-dropdown" role="menu" aria-hidden="true" style="display:none;">
+					<div class="dropdown-item">
+						<button id="accion-seleccionar-todo">Seleccionar Todo</button>
+					</div>
+					<div class="dropdown-item">
+						<button id="accion-seleccionar">Seleccionar</button>
+					</div>
+					<div class="dropdown-item">
+						<button id="accion-deseleccionar-todo">Deseleccionar Todo</button>
+					</div>
+					<div class="dropdown-item">
+						<button id="accion-ocultar-seleccionar">Ocultar Seleccionar</button>
+					</div>
+					<div class="dropdown-item">
+						<button id="accion-eliminar">Eliminar</button>
+					</div>
+					<div class="dropdown-item">
+						<button id="accion-duplicar">Duplicar</button>
+					</div>
+					<div class="dropdown-item">
+						<button id="accion-importar-datos">Importar Datos</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Input de fecha -->
+			<input id="buscador-fecha" type="date" placeholder="Buscar por fecha..." style="padding:0.5rem; border-radius:6px; border:1px solid #ccc;" />
+
+			<!-- Botón Filtrar por Fecha -->
+			<div style="position: relative;">
+				<button id="btn-filtrar-fecha" class="btn btn-neutral" aria-expanded="false" aria-controls="filtrar-fecha-list" style="padding:0.4rem 0.6rem;">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y="6"/><line x1="8" y1="2" x2="8" y="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+					Filtrar por Fecha
+					<small style="margin-left:6px; opacity:0.7;">▾</small>
+				</button>
+				<div id="filtrar-fecha-list" class="column-filters-dropdown" role="menu" aria-hidden="true" style="display:none;">
+					<div class="dropdown-item">
+						<input type="checkbox" id="chk-fecha-inicio" />
+						<label for="chk-fecha-inicio">Inicio</label>
+					</div>
+					<div class="dropdown-item">
+						<input type="checkbox" id="chk-fecha-final" />
+						<label for="chk-fecha-final">Final</label>
+					</div>
+					<div class="dropdown-item">
+						<input type="checkbox" id="chk-fecha-actualizado" />
+						<label for="chk-fecha-actualizado">Actualizado</label>
+					</div>
+				</div>
 			</div>
 		</div>
 

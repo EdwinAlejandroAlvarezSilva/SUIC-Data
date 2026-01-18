@@ -89,6 +89,33 @@ function getTiempoForDetalle(detalle) {
   detalleToTiempo[detalle] = defecto;
   return defecto;
 }
+
+// Función para formatear fechas al formato hh:mm:ss dd/mm/yyyy
+function formatDateTime(value) {
+  if (!value) return '';
+  let date;
+  if (typeof value === 'number') {
+    // Excel serial date (días desde 1900-01-01)
+    date = new Date((value - 25569) * 86400 * 1000);
+  } else if (typeof value === 'string') {
+    // Intentar parsear como fecha
+    date = new Date(value);
+  } else {
+    return value; // Si no es número ni string, devolver como está
+  }
+  if (isNaN(date.getTime())) return value; // Si no es fecha válida, devolver original
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  const hh = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return `${hh}:${min}:${ss} ${dd}/${mm}/${yyyy}`;
+}
+
+// Variables para la columna de selección
+let showSelectionColumn = false;
+let selectedRows = new Set();
 function crearTabla(registros, storedIndices) {
   const container = document.getElementById('registros-container');
   container.innerHTML = '';
@@ -124,6 +151,12 @@ function crearTabla(registros, storedIndices) {
 
   const thead = document.createElement('thead');
   const trh = document.createElement('tr');
+  if (showSelectionColumn) {
+    const thSel = document.createElement('th');
+    thSel.textContent = 'Seleccionar';
+    thSel.style.textAlign = 'center';
+    trh.appendChild(thSel);
+  }
   encabezados.forEach((h, colIdx) => {
     const th = document.createElement('th');
     th.textContent = h;
@@ -143,6 +176,24 @@ function crearTabla(registros, storedIndices) {
     const tr = document.createElement('tr');
     // índice real en el array guardado
     const realIndex = Array.isArray(storedIndices) ? storedIndices[idx] : idx;
+
+    if (showSelectionColumn) {
+      const tdSel = document.createElement('td');
+      tdSel.style.textAlign = 'center';
+      tdSel.style.verticalAlign = 'middle';
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.checked = selectedRows.has(realIndex);
+      chk.addEventListener('change', () => {
+        if (chk.checked) {
+          selectedRows.add(realIndex);
+        } else {
+          selectedRows.delete(realIndex);
+        }
+      });
+      tdSel.appendChild(chk);
+      tr.appendChild(tdSel);
+    }
 
     // Crear celdas en base a los encabezados esperados
     const tiempoColIdxInner = encabezados.indexOf('Tiempo');
@@ -588,25 +639,37 @@ function filtrarRegistros(registros, texto, columna) {
 }
 
 // Filtrar y devolver pares [fila, indiceOriginal]
-function filtrarRegistrosWithIndices(registros, texto, columna) {
+function filtrarRegistrosWithIndices(registros, texto, columna, fecha, columnasFecha) {
   const resultados = [];
   if (!registros || registros.length === 0) return { rows: [], indices: [] };
-  if (!texto) {
+  if (!texto && !fecha) {
     // devolver todos
     return { rows: registros.slice(), indices: registros.map((_, i) => i) };
   }
-  const t = texto.trim().toLowerCase();
-  if (!t) return { rows: registros.slice(), indices: registros.map((_, i) => i) };
-
+  const t = texto ? texto.trim().toLowerCase() : '';
+  const f = fecha ? fecha.trim() : '';
   registros.forEach((fila, idx) => {
-    let match = false;
-    if (columna === 'all') {
-      match = fila.some(c => String(c || '').toLowerCase().includes(t));
-    } else {
-      const iCol = Number(columna);
-      if (!isNaN(iCol)) match = String(fila[iCol] || '').toLowerCase().includes(t);
-    }
-    if (match) {
+    let matchTexto = !texto || (t && (
+      columna === 'all' ?
+        fila.some(c => String(c || '').toLowerCase().includes(t)) :
+        String(fila[Number(columna)] || '').toLowerCase().includes(t)
+    ));
+    let matchFecha = !fecha || !columnasFecha.length || columnasFecha.some(col => {
+      const val = fila[col];
+      if (!val) return false;
+      // Extraer fecha de formato HH:MM:SS DD/MM/YYYY
+      const parts = String(val).split(' ');
+      if (parts.length < 2) return false;
+      const datePart = parts[1];
+      // Convertir f de YYYY-MM-DD a DD/MM/YYYY
+      let fFormatted = f;
+      if (f.includes('-')) {
+        const [yyyy, mm, dd] = f.split('-');
+        fFormatted = `${dd}/${mm}/${yyyy}`;
+      }
+      return datePart === fFormatted;
+    });
+    if (matchTexto && matchFecha) {
       resultados.push({ fila, idx });
     }
   });
@@ -725,7 +788,12 @@ function cargarYMostrar() {
   }
   const texto = document.getElementById('buscador-texto')?.value || '';
   const columna = document.getElementById('buscador-columna')?.value || 'all';
-  const { rows, indices } = filtrarRegistrosWithIndices(datos, texto, columna);
+  const fecha = document.getElementById('buscador-fecha')?.value || '';
+  const columnasFecha = [];
+  if (document.getElementById('chk-fecha-inicio')?.checked) columnasFecha.push(0); // Inicio
+  if (document.getElementById('chk-fecha-final')?.checked) columnasFecha.push(2); // Final
+  if (document.getElementById('chk-fecha-actualizado')?.checked) columnasFecha.push(18); // Actualizado
+  const { rows, indices } = filtrarRegistrosWithIndices(datos, texto, columna, fecha, columnasFecha);
   crearTabla(rows, indices);
 }
 
@@ -811,8 +879,7 @@ function _resetModalChrono() {
 function colocarHoraModal_tipoControl(tipo, valorSelect) {
   // tipo: 'inicio' o 'final', valorSelect: opción seleccionada en el select correspondiente
   if (tipo === 'inicio') {
-    // Cambiar el select de inicio no debe reanudar el cronómetro.
-    // Si se selecciona 'En proceso' manualmente, sólo establecemos la hora inicio si no existe.
+    // Si se selecciona 'En proceso' manualmente, establecer la hora inicio si no existe e iniciar el cronómetro
     if (valorSelect === 'En proceso') {
       const hi = document.getElementById('edit-hora-inicio');
       if (hi && !hi.value) {
@@ -825,7 +892,8 @@ function colocarHoraModal_tipoControl(tipo, valorSelect) {
         const ss = String(ahora.getSeconds()).padStart(2, '0');
         hi.value = `${hh}:${min}:${ss} ${dd}/${mm}/${yyyy}`;
       }
-      // No iniciar el cronómetro aquí: se debe iniciar sólo con 'Continuar' en el select final
+      // Iniciar el cronómetro desde el tiempo acumulado
+      _startModalChrono();
     }
   }
   if (tipo === 'final') {
@@ -959,11 +1027,18 @@ window.addEventListener('load', () => {
   // Buscador - debounce
   const searchInput = document.getElementById('buscador-texto');
   const searchSelect = document.getElementById('buscador-columna');
+  const searchFecha = document.getElementById('buscador-fecha');
   const btnClear = document.getElementById('btn-clear-search');
   const debounced = debounce(cargarYMostrar, 200);
   if (searchInput) searchInput.addEventListener('input', debounced);
   if (searchSelect) searchSelect.addEventListener('change', cargarYMostrar);
-  if (btnClear) btnClear.addEventListener('click', () => { if (searchInput) searchInput.value = ''; if (searchSelect) searchSelect.value = 'all'; cargarYMostrar(); });
+  if (searchFecha) searchFecha.addEventListener('change', cargarYMostrar);
+  if (btnClear) btnClear.addEventListener('click', () => { 
+    if (searchInput) searchInput.value = ''; 
+    if (searchSelect) searchSelect.value = 'all'; 
+    if (searchFecha) searchFecha.value = '';
+    cargarYMostrar(); 
+  });
 
   const btnRef = document.getElementById('btn-refrescar');
   const btnVac = document.getElementById('btn-vaciar');
@@ -1000,6 +1075,244 @@ window.addEventListener('load', () => {
     detalleEdit.addEventListener('input', function() {
       const tEl = document.getElementById('edit-tiempo');
       if (tEl) tEl.value = getTiempoForDetalle(this.value);
+    });
+  }
+
+  // Botón Acciones
+  const btnAcciones = document.getElementById('btn-acciones');
+  const accionesList = document.getElementById('acciones-list');
+  if (btnAcciones && accionesList) {
+    btnAcciones.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const expanded = btnAcciones.getAttribute('aria-expanded') === 'true';
+      btnAcciones.setAttribute('aria-expanded', String(!expanded));
+      accionesList.style.display = expanded ? 'none' : 'block';
+      accionesList.setAttribute('aria-hidden', String(expanded));
+    });
+    // Cerrar cuando se haga clic fuera
+    document.addEventListener('click', (e) => {
+      if (!accionesList.contains(e.target) && e.target !== btnAcciones) {
+        accionesList.style.display = 'none';
+        btnAcciones.setAttribute('aria-expanded', 'false');
+        accionesList.setAttribute('aria-hidden', 'true');
+      }
+    });
+  }
+
+  // Botón Filtrar por Fecha
+  const btnFiltrarFecha = document.getElementById('btn-filtrar-fecha');
+  const filtrarFechaList = document.getElementById('filtrar-fecha-list');
+  if (btnFiltrarFecha && filtrarFechaList) {
+    btnFiltrarFecha.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const expanded = btnFiltrarFecha.getAttribute('aria-expanded') === 'true';
+      btnFiltrarFecha.setAttribute('aria-expanded', String(!expanded));
+      filtrarFechaList.style.display = expanded ? 'none' : 'block';
+      filtrarFechaList.setAttribute('aria-hidden', String(expanded));
+    });
+    // Cerrar cuando se haga clic fuera
+    document.addEventListener('click', (e) => {
+      if (!filtrarFechaList.contains(e.target) && e.target !== btnFiltrarFecha) {
+        filtrarFechaList.style.display = 'none';
+        btnFiltrarFecha.setAttribute('aria-expanded', 'false');
+        filtrarFechaList.setAttribute('aria-hidden', 'true');
+      }
+    });
+  }
+
+  // Checkboxes de fecha
+  const chkFechaInicio = document.getElementById('chk-fecha-inicio');
+  const chkFechaFinal = document.getElementById('chk-fecha-final');
+  const chkFechaActualizado = document.getElementById('chk-fecha-actualizado');
+  if (chkFechaInicio) chkFechaInicio.addEventListener('change', cargarYMostrar);
+  if (chkFechaFinal) chkFechaFinal.addEventListener('change', cargarYMostrar);
+  if (chkFechaActualizado) chkFechaActualizado.addEventListener('change', cargarYMostrar);
+
+  // Opciones de acciones
+  const accionSeleccionarTodo = document.getElementById('accion-seleccionar-todo');
+  if (accionSeleccionarTodo) {
+    accionSeleccionarTodo.addEventListener('click', () => {
+      showSelectionColumn = true;
+      selectedRows.clear();
+      // Marcar todos
+      try {
+        const raw = localStorage.getItem('registros');
+        const all = raw ? JSON.parse(raw) : [];
+        all.forEach((_, idx) => selectedRows.add(idx));
+      } catch (e) {}
+      cargarYMostrar();
+      accionesList.style.display = 'none';
+      btnAcciones.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  const accionSeleccionar = document.getElementById('accion-seleccionar');
+  if (accionSeleccionar) {
+    accionSeleccionar.addEventListener('click', () => {
+      showSelectionColumn = true;
+      cargarYMostrar();
+      accionesList.style.display = 'none';
+      btnAcciones.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  const accionDeseleccionarTodo = document.getElementById('accion-deseleccionar-todo');
+  if (accionDeseleccionarTodo) {
+    accionDeseleccionarTodo.addEventListener('click', () => {
+      if (selectedRows.size === 0 || !showSelectionColumn) {
+        // No hacer nada si no hay seleccionadas o no se visualiza la columna
+        accionesList.style.display = 'none';
+        btnAcciones.setAttribute('aria-expanded', 'false');
+        return;
+      }
+      selectedRows.clear();
+      cargarYMostrar();
+      accionesList.style.display = 'none';
+      btnAcciones.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  const accionOcultarSeleccionar = document.getElementById('accion-ocultar-seleccionar');
+  if (accionOcultarSeleccionar) {
+    accionOcultarSeleccionar.addEventListener('click', () => {
+      if (showSelectionColumn) {
+        showSelectionColumn = false;
+        selectedRows.clear();
+        cargarYMostrar();
+      }
+      accionesList.style.display = 'none';
+      btnAcciones.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  const accionEliminar = document.getElementById('accion-eliminar');
+  if (accionEliminar) {
+    accionEliminar.addEventListener('click', () => {
+      if (selectedRows.size === 0) {
+        alert('No hay filas seleccionadas para eliminar.');
+        return;
+      }
+      if (!confirm('¿Está seguro de eliminar las filas seleccionadas?')) return;
+      try {
+        const raw = localStorage.getItem('registros');
+        const all = raw ? JSON.parse(raw) : [];
+        // Ordenar índices descendente para no afectar posiciones
+        const indices = Array.from(selectedRows).sort((a,b) => b - a);
+        indices.forEach(idx => all.splice(idx, 1));
+        localStorage.setItem('registros', JSON.stringify(all));
+        selectedRows.clear();
+        showSelectionColumn = false;
+      } catch (e) { console.error(e); }
+      cargarYMostrar();
+      accionesList.style.display = 'none';
+      btnAcciones.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  const accionDuplicar = document.getElementById('accion-duplicar');
+  if (accionDuplicar) {
+    accionDuplicar.addEventListener('click', () => {
+      if (selectedRows.size === 0) {
+        alert('No hay filas seleccionadas para duplicar.');
+        return;
+      }
+      if (!confirm('¿Está seguro de duplicar las filas seleccionadas?')) return;
+      try {
+        const raw = localStorage.getItem('registros');
+        const all = raw ? JSON.parse(raw) : [];
+        const toDuplicate = Array.from(selectedRows).map(idx => all[idx]).filter(Boolean);
+        toDuplicate.forEach(fila => {
+          const nuevaFila = [...fila];
+          // Dejar en blanco Inicio, Estado Inicio, Final, Estado Final, Actualizado, Tiempo
+          nuevaFila[0] = ''; // Inicio
+          nuevaFila[1] = ''; // Estado Inicio
+          nuevaFila[2] = ''; // Final
+          nuevaFila[3] = ''; // Estado Final
+          nuevaFila[18] = ''; // Actualizado
+          nuevaFila[19] = ''; // Tiempo
+          all.push(nuevaFila);
+        });
+        localStorage.setItem('registros', JSON.stringify(all));
+        selectedRows.clear();
+        showSelectionColumn = false;
+      } catch (e) { console.error(e); }
+      cargarYMostrar();
+      accionesList.style.display = 'none';
+      btnAcciones.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  const accionImportarDatos = document.getElementById('accion-importar-datos');
+  if (accionImportarDatos) {
+    accionImportarDatos.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.xlsx,.xlsm';
+      input.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+            if (json.length < 2) {
+              alert('El archivo no tiene suficientes filas.');
+              return;
+            }
+
+            // Verificar encabezados
+            const expectedHeaders = [
+              "Inicio", "Estado de Inicio", "Final", "Estado Final", "Nombre", "Acciones", "Detalle de Solicitud", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión", "Nuevo o Actualizado", "Cant Documentos", "Categoría", "Analista/Área", "Nombre de Documento", "Asignado a", "Prioridad", "Actualizado", "Tiempo (cronómetro)"
+            ];
+            const headers = json[0];
+            for (let i = 0; i < expectedHeaders.length; i++) {
+              if (headers[i] !== expectedHeaders[i]) {
+                alert(`Encabezado incorrecto en columna ${String.fromCharCode(65 + i)}1: esperado "${expectedHeaders[i]}", encontrado "${headers[i]}"`);
+                return;
+              }
+            }
+
+            // Extraer datos
+            const newRows = [];
+            for (let i = 1; i < json.length; i++) {
+              const row = json[i];
+              if (row.length < 20) continue; // Saltar filas incompletas
+              const newRow = row.slice(0, 20);
+              // Convertir fechas
+              newRow[0] = formatDateTime(newRow[0]); // Inicio
+              newRow[2] = formatDateTime(newRow[2]); // Final
+              newRow[18] = formatDateTime(newRow[18]); // Actualizado
+              newRows.push(newRow);
+            }
+
+            if (newRows.length === 0) {
+              alert('No se encontraron filas de datos válidas.');
+              return;
+            }
+
+            // Agregar al localStorage
+            const raw = localStorage.getItem('registros');
+            const all = raw ? JSON.parse(raw) : [];
+            all.push(...newRows);
+            localStorage.setItem('registros', JSON.stringify(all));
+
+            alert(`Se importaron ${newRows.length} registros.`);
+            cargarYMostrar();
+          } catch (error) {
+            console.error(error);
+            alert('Error al procesar el archivo: ' + error.message);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      });
+      input.click();
+      accionesList.style.display = 'none';
+      btnAcciones.setAttribute('aria-expanded', 'false');
     });
   }
 });

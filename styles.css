@@ -849,14 +849,14 @@ button[onclick="descargarTodoCSV()"] {
   font-size: 0.95rem;
 }
 #column-filters input[type="checkbox"] {
-  transform: scale(0.95);
+  transform: scale(1.5);
   margin-left: 0.25rem;
   margin-right: 0.15rem;
 }
 
 .column-filters-dropdown {
   position: absolute;
-  top: 38px;
+  top: 100%;
   left: 0;
   background: #ffffff;
   border: 1px solid #e0e0e0;
@@ -898,6 +898,23 @@ button[onclick="descargarTodoCSV()"] {
   white-space: nowrap;
 }
 
+.column-filters-dropdown button {
+  display: block;
+  width: 100%;
+  padding: 0.25rem 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #333;
+  border-radius: 4px;
+}
+
+.column-filters-dropdown button:hover {
+  background: #f0f0f0;
+}
+
 /* ------------------ Dark mode enhancements ------------------ */
 body.dark-theme .btn {
   border-color: rgba(255,255,255,0.06);
@@ -932,6 +949,10 @@ body.dark-theme .registros-table thead th {
 body.dark-theme .registros-table td {
   color: #cfeaf6;
   border-bottom-color: #0e1a22;
+}
+
+.registros-table input[type="checkbox"] {
+  transform: scale(2);
 }
 body.dark-theme .registros-table tbody tr:hover {
   background: #071923;
@@ -972,6 +993,9 @@ body.dark-theme #toggle-theme {
 /* Ensure dropdown checkbox labels are readable */
 body.dark-theme .column-filters-dropdown label { color: #d7eef6; }
 
+body.dark-theme .column-filters-dropdown button { color: #d7eef6; }
+body.dark-theme .column-filters-dropdown button:hover { background: #0e1a22; }
+
 /* Make small buttons stand out on dark backgrounds */
 body.dark-theme .btn-sm { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.03); }
 
@@ -980,16 +1004,16 @@ body.dark-theme .btn-sm { background: rgba(255,255,255,0.03); border-color: rgba
 /* Modal de edición */
 .modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 99999; }
 .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.45); z-index: 99990; }
-.modal-content { position: relative; background: #fff; border-radius: 12px; padding: 1rem 1.25rem; width: 94%; max-width: 760px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 99999; }
+.modal-content { position: relative; background: #fff; border-radius: 12px; padding: 1rem 1.25rem; width: 94%; max-width: 760px; max-height: 95vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 99999; }
 .modal-content header h2 { margin: 0; font-size: 1.1rem; }
-.modal-content input, .modal-content textarea { width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid #ddd; background: #fafafa; }
+.modal-content input, .modal-content textarea { width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid #ddd; background: #fafafa; resize: vertical; }
 
 body.dark-theme .modal-content { background: #071219; color: #e6eef6; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
-body.dark-theme .modal-content input, body.dark-theme .modal-content textarea { background: #07121a; color: #e6eef6; border: 1px solid #13303a; }
+body.dark-theme .modal-content input, body.dark-theme .modal-content textarea { background: #07121a; color: #e6eef6; border: 1px solid #13303a; resize: vertical; }
 
 @media (max-width: 520px) {
   .modal-content { padding: 0.8rem; }
-  .modal-content input, .modal-content textarea { padding: 0.5rem; }
+  .modal-content input, .modal-content textarea { padding: 0.5rem; resize: vertical; }
 }
 
 /* Breakpoint para pantallas grandes: dar más ancho al modal sin romper diseño */
