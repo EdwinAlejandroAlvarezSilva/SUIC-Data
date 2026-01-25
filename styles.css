@@ -1027,3 +1027,43 @@ body.dark-theme .modal-content input, body.dark-theme .modal-content textarea { 
     max-width: 1100px; /* permitir layout más espacioso en pantallas muy anchas */
   }
 }
+
+/* Estilos para filtros desplegables en tabla */
+.filter-input {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+  min-width: 120px; /* ancho mínimo */
+}
+body.dark-theme .filter-input {
+  background-color: #333;
+  color: #fff;
+  border-color: #555;
+}
+body.light-theme .filter-input {
+  background-color: #fff;
+  color: #000;
+}
+
+/* Estilos para icono de filtro */
+.filter-icon {
+  display: inline-block;
+  vertical-align: middle;
+}
+.filter-icon svg {
+  color: #666;
+  transition: color 0.2s, fill 0.2s;
+}
+body.dark-theme .filter-icon svg {
+  color: #ccc;
+}
+.filter-icon.active svg {
+  fill: currentColor;
+  stroke: currentColor;
+  color: #007bff;
+}
+body.dark-theme .filter-icon.active svg {
+  color: #4dabf7;
+}

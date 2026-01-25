@@ -526,6 +526,10 @@ function descargarDatos() {
 function borrarDatos() {
   const elementos = document.querySelectorAll('input, textarea, select');
   elementos.forEach(el => {
+    // Omitir los campos: Tiempo de Gestión, Nuevo o Actualizado, Prioridad
+    if (el.id === 'tiempo' || el.id === 'actualizado' || el.id === 'prioridad') {
+      return;
+    }
     if (el.tagName === 'SELECT') {
       el.selectedIndex = 0;
     } else if (['text', 'number', 'date'].includes(el.type) || el.tagName === 'TEXTAREA') {

@@ -138,6 +138,25 @@ function crearTabla(registros, storedIndices) {
   const table = document.createElement('table');
   table.className = 'registros-table';
 
+  // Función para aplicar filtros
+  function applyFilters() {
+    const rows = tbody.querySelectorAll('tr');
+    rows.forEach(row => {
+      let show = true;
+      const cells = row.querySelectorAll('td');
+      filters.forEach((filter, idx) => {
+        if (!filter) return;
+        const cell = cells[idx + (showSelectionColumn ? 1 : 0)]; // offset por selección
+        if (!cell) return;
+        const cellText = cell.textContent || '';
+        const filterVal = filter.value.trim();
+        if (filterVal === '') return; // no filter
+        if (!cellText.toLowerCase().includes(filterVal.toLowerCase())) show = false;
+      });
+      row.style.display = show ? '' : 'none';
+    });
+  }
+
   // Column visibility (leer desde localStorage)
   const defaultVisible = encabezados.map(() => true).concat([true]); // incluir columna Acciones
   let visible = defaultVisible;
@@ -151,23 +170,100 @@ function crearTabla(registros, storedIndices) {
 
   const thead = document.createElement('thead');
   const trh = document.createElement('tr');
+  const filters = []; // array para los elementos de filtro
   if (showSelectionColumn) {
     const thSel = document.createElement('th');
     thSel.textContent = 'Seleccionar';
     thSel.style.textAlign = 'center';
     trh.appendChild(thSel);
+    filters.push(null); // no filter for selection
   }
+
+  // Opciones para filtros select fijos
+  const filterOptions = {
+    "Estado Inicio": ["En proceso"],
+    "Estado Final": ["Continuar"],
+    "Nuevo/Actualizado": ["Nuevo", "Actualizado"],
+    "Prioridad": ["Highest", "High", "Medium"]
+  };
+
+  // SVGs para iconos
+  const inactiveIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-4.35-4.35M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0z"/></svg>';
+
+  // Función para actualizar icono
+  function updateIcon(th, filterEl) {
+    const icon = th.querySelector('.filter-icon');
+    const isActive = filterEl.value.trim() !== '';
+    if (isActive) {
+      icon.classList.add('active');
+    } else {
+      icon.classList.remove('active');
+    }
+  }
+
   encabezados.forEach((h, colIdx) => {
     const th = document.createElement('th');
-    th.textContent = h;
+    th.innerHTML = `${h} <span class="filter-icon" title="Limpiar filtro" style="cursor:pointer; margin-left: 5px;">${inactiveIcon}</span>`;
+    th.style.position = 'relative'; // para position absolute del filtro
+    th.style.cursor = 'pointer'; // indicar que es clickeable
     if (!visible[colIdx]) th.style.display = 'none';
+    // Crear filtro input con datalist
+    const filterEl = document.createElement('input');
+    filterEl.type = 'text';
+    filterEl.className = 'filter-input';
+    filterEl.placeholder = 'Buscar...';
+    const datalist = document.createElement('datalist');
+    datalist.id = `datalist-${colIdx}`;
+    filterEl.setAttribute('list', datalist.id);
+    // Agregar opciones fijas si existen
+    if (filterOptions[h]) {
+      filterOptions[h].forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt;
+        datalist.appendChild(option);
+      });
+    }
+    filterEl.style.display = 'none';
+    filterEl.style.position = 'absolute';
+    filterEl.style.top = '100%';
+    filterEl.style.left = '0';
+    filterEl.style.zIndex = '10';
+    filterEl.style.width = '100%';
+    filterEl.addEventListener('input', () => {
+      applyFilters();
+      updateIcon(th, filterEl);
+    });
+    filterEl.addEventListener('click', (e) => e.stopPropagation()); // no cerrar al click
+    filterEl.addEventListener('blur', () => setTimeout(() => filterEl.style.display = 'none', 150)); // ocultar al perder foco
+    th.appendChild(filterEl);
+    th.appendChild(datalist);
+    // Event listener para el icono de limpiar
+    const icon = th.querySelector('.filter-icon');
+    icon.addEventListener('click', (e) => {
+      e.stopPropagation();
+      filterEl.value = '';
+      applyFilters();
+      updateIcon(th, filterEl);
+    });
+    th.addEventListener('click', (e) => {
+      if (e.target === icon) return; // no mostrar filtro si click en icono
+      const isVisible = filterEl.style.display !== 'none';
+      // Ocultar otros filtros
+      document.querySelectorAll('.filter-input').forEach(el => el.style.display = 'none');
+      if (!isVisible) {
+        filterEl.style.display = 'block';
+        filterEl.focus();
+      }
+    });
     trh.appendChild(th);
+    filters[colIdx + (showSelectionColumn ? 1 : 0)] = filterEl; // ajustar índice
   });
   // Añadir columna acciones
   const thAcc = document.createElement('th');
   thAcc.textContent = 'Acciones';
   if (!visible[encabezados.length]) thAcc.style.display = 'none';
   trh.appendChild(thAcc);
+  filters.push(null); // no filter for actions
   thead.appendChild(trh);
   table.appendChild(thead);
 
@@ -278,6 +374,30 @@ function crearTabla(registros, storedIndices) {
   });
 
   table.appendChild(tbody);
+
+  // Poblar opciones únicas en datalists
+  filters.forEach((filter, idx) => {
+    if (!filter) return;
+    const datalist = filter.nextElementSibling; // el datalist
+    const unique = new Set();
+    tbody.querySelectorAll('tr').forEach(row => {
+      const cells = row.querySelectorAll('td');
+      const cell = cells[idx];
+      if (cell) {
+        const val = cell.textContent.trim();
+        if (val) unique.add(val);
+      }
+    });
+    unique.forEach(val => {
+      if (!datalist.querySelector(`option[value="${val}"]`)) {
+        const opt = document.createElement('option');
+        opt.value = val;
+        datalist.appendChild(opt);
+      }
+    });
+  });
+
+  applyFilters(); // aplicar filtros iniciales
   container.appendChild(table);
   document.getElementById('registros-count').textContent = `${registros.length} registro(s)`;
 }
