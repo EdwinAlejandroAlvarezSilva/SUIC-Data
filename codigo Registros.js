@@ -144,16 +144,38 @@ function crearTabla(registros, storedIndices) {
     rows.forEach(row => {
       let show = true;
       const cells = row.querySelectorAll('td');
-      filters.forEach((filter, idx) => {
-        if (!filter) return;
+      filters.forEach((filterObj, idx) => {
+        if (!filterObj || filterObj.values.size === 0) return;
         const cell = cells[idx + (showSelectionColumn ? 1 : 0)]; // offset por selección
         if (!cell) return;
         const cellText = cell.textContent || '';
-        const filterVal = filter.value.trim();
-        if (filterVal === '') return; // no filter
-        if (!cellText.toLowerCase().includes(filterVal.toLowerCase())) show = false;
+        if (!filterObj.values.has(cellText)) show = false;
       });
       row.style.display = show ? '' : 'none';
+    });
+    // Actualizar contador con filas visibles
+    const visibleRows = Array.from(rows).filter(row => row.style.display === '').length;
+    document.getElementById('registros-count').textContent = `${visibleRows} registro(s)`;
+
+    // Actualizar checkboxes en los dropdowns
+    const headers = showSelectionColumn ? ['Seleccionar', ...encabezados, 'Acciones'] : [...encabezados, 'Acciones'];
+    filters.forEach((filterObj, idx) => {
+      if (!filterObj) return;
+      const unique = new Set();
+      const h = headers[idx];
+      // Agregar opciones de filas visibles
+      Array.from(rows).filter(row => row.style.display === '').forEach(row => {
+        const cells = row.querySelectorAll('td');
+        const cell = cells[idx + (showSelectionColumn ? 1 : 0)];
+        if (cell) {
+          const val = cell.textContent.trim();
+          if (val) unique.add(val);
+        }
+      });
+      // Guardar unique en filterObj
+      filterObj.unique = unique;
+      // Actualizar checkboxes
+      updateCheckboxes(filterObj);
     });
   }
 
@@ -191,14 +213,50 @@ function crearTabla(registros, storedIndices) {
   const inactiveIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-4.35-4.35M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0z"/></svg>';
 
   // Función para actualizar icono
-  function updateIcon(th, filterEl) {
+  function updateIcon(th, filterObj) {
     const icon = th.querySelector('.filter-icon');
-    const isActive = filterEl.value.trim() !== '';
+    const isActive = filterObj.values.size > 0;
     if (isActive) {
       icon.classList.add('active');
     } else {
       icon.classList.remove('active');
     }
+  }
+
+  // Función para actualizar checkboxes en un filtro
+  function updateCheckboxes(filterObj) {
+    // Limpiar checkboxes existentes, mantener el input (primer hijo)
+    const children = Array.from(filterObj.el.children);
+    for (let i = children.length - 1; i > 0; i--) {
+      filterObj.el.removeChild(children[i]);
+    }
+    // Crear checkboxes para opciones que coinciden con searchTerm
+    filterObj.unique.forEach(val => {
+      if (val.toLowerCase().includes(filterObj.searchTerm)) {
+        const label = document.createElement('label');
+        label.style.display = 'block';
+        label.style.marginBottom = '4px';
+        label.style.whiteSpace = 'nowrap';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = val;
+        checkbox.checked = filterObj.values.has(val);
+        checkbox.style.transform = 'scale(1.5)';
+        checkbox.style.marginRight = '4px';
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) {
+            filterObj.values.add(val);
+          } else {
+            filterObj.values.delete(val);
+          }
+          applyFilters();
+          updateIcon(filterObj.th, filterObj);
+        });
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(' ' + val));
+        filterObj.el.appendChild(label);
+      }
+    });
   }
 
   encabezados.forEach((h, colIdx) => {
@@ -207,56 +265,60 @@ function crearTabla(registros, storedIndices) {
     th.style.position = 'relative'; // para position absolute del filtro
     th.style.cursor = 'pointer'; // indicar que es clickeable
     if (!visible[colIdx]) th.style.display = 'none';
-    // Crear filtro input con datalist
-    const filterEl = document.createElement('input');
-    filterEl.type = 'text';
-    filterEl.className = 'filter-input';
-    filterEl.placeholder = 'Buscar...';
-    const datalist = document.createElement('datalist');
-    datalist.id = `datalist-${colIdx}`;
-    filterEl.setAttribute('list', datalist.id);
-    // Agregar opciones fijas si existen
-    if (filterOptions[h]) {
-      filterOptions[h].forEach(opt => {
-        const option = document.createElement('option');
-        option.value = opt;
-        datalist.appendChild(option);
-      });
-    }
+    // Crear filtro dropdown con checkboxes
+    const filterEl = document.createElement('div');
+    filterEl.className = 'filter-dropdown';
     filterEl.style.display = 'none';
     filterEl.style.position = 'absolute';
     filterEl.style.top = '100%';
     filterEl.style.left = '0';
     filterEl.style.zIndex = '10';
-    filterEl.style.width = '100%';
-    filterEl.addEventListener('input', () => {
-      applyFilters();
-      updateIcon(th, filterEl);
-    });
-    filterEl.addEventListener('click', (e) => e.stopPropagation()); // no cerrar al click
-    filterEl.addEventListener('blur', () => setTimeout(() => filterEl.style.display = 'none', 150)); // ocultar al perder foco
+    filterEl.style.background = 'white';
+    filterEl.style.border = '1px solid #ccc';
+    filterEl.style.borderRadius = '4px';
+    filterEl.style.padding = '8px';
+    filterEl.style.maxHeight = '200px';
+    filterEl.style.overflowY = 'auto';
+    filterEl.style.overflowX = 'auto';
+    filterEl.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+    filterEl.style.minWidth = '150px';
+    filterEl.style.maxWidth = '200px';
+    // Agregar input de búsqueda
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Buscar...';
+    searchInput.style.width = '100%';
+    searchInput.style.marginBottom = '8px';
+    searchInput.style.padding = '4px';
+    searchInput.style.boxSizing = 'border-box';
+    filterEl.appendChild(searchInput);
     th.appendChild(filterEl);
-    th.appendChild(datalist);
-    // Event listener para el icono de limpiar
+    const filterObj = { el: filterEl, values: new Set(), th: th, searchTerm: '' };
+    // Event listener para el input de búsqueda
+    searchInput.addEventListener('input', () => {
+      filterObj.searchTerm = searchInput.value.toLowerCase();
+      updateCheckboxes(filterObj);
+    });
+    filters[colIdx + (showSelectionColumn ? 1 : 0)] = filterObj;
+    // Event listeners
+    filterObj.el.addEventListener('click', (e) => e.stopPropagation());
     const icon = th.querySelector('.filter-icon');
     icon.addEventListener('click', (e) => {
       e.stopPropagation();
-      filterEl.value = '';
+      filterObj.values.clear();
       applyFilters();
-      updateIcon(th, filterEl);
+      updateIcon(filterObj.th, filterObj);
     });
     th.addEventListener('click', (e) => {
       if (e.target === icon) return; // no mostrar filtro si click en icono
-      const isVisible = filterEl.style.display !== 'none';
+      const isVisible = filterObj.el.style.display !== 'none';
       // Ocultar otros filtros
-      document.querySelectorAll('.filter-input').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.filter-dropdown').forEach(el => el.style.display = 'none');
       if (!isVisible) {
-        filterEl.style.display = 'block';
-        filterEl.focus();
+        filterObj.el.style.display = 'block';
       }
     });
     trh.appendChild(th);
-    filters[colIdx + (showSelectionColumn ? 1 : 0)] = filterEl; // ajustar índice
   });
   // Añadir columna acciones
   const thAcc = document.createElement('th');
@@ -375,31 +437,19 @@ function crearTabla(registros, storedIndices) {
 
   table.appendChild(tbody);
 
-  // Poblar opciones únicas en datalists
-  filters.forEach((filter, idx) => {
-    if (!filter) return;
-    const datalist = filter.nextElementSibling; // el datalist
-    const unique = new Set();
-    tbody.querySelectorAll('tr').forEach(row => {
-      const cells = row.querySelectorAll('td');
-      const cell = cells[idx];
-      if (cell) {
-        const val = cell.textContent.trim();
-        if (val) unique.add(val);
-      }
-    });
-    unique.forEach(val => {
-      if (!datalist.querySelector(`option[value="${val}"]`)) {
-        const opt = document.createElement('option');
-        opt.value = val;
-        datalist.appendChild(opt);
+  applyFilters(); // aplicar filtros iniciales
+  container.appendChild(table);
+
+  // Event listener global para ocultar filtros al hacer clic fuera
+  document.addEventListener('click', (e) => {
+    const dropdowns = document.querySelectorAll('.filter-dropdown');
+    dropdowns.forEach(dropdown => {
+      const th = dropdown.parentElement;
+      if (!th.contains(e.target)) {
+        dropdown.style.display = 'none';
       }
     });
   });
-
-  applyFilters(); // aplicar filtros iniciales
-  container.appendChild(table);
-  document.getElementById('registros-count').textContent = `${registros.length} registro(s)`;
 }
 
 /* --- Modal edit helpers --- */
