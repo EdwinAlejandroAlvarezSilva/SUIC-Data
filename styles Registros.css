@@ -15,8 +15,7 @@ body.light-theme .acciones-wrapper label,
 body.light-theme .detalle-wrapper label,
 body.light-theme .fallas-wrapper label,
 body.light-theme .descripcion label,
-body.light-theme .comentarios label,
-body.light-theme .detalle-linea label {
+body.light-theme .comentarios label {
   color: #000000;
 }
 body.dark-theme .nombre-tarea label,
@@ -24,8 +23,7 @@ body.dark-theme .acciones-wrapper label,
 body.dark-theme .detalle-wrapper label,
 body.dark-theme .fallas-wrapper label,
 body.dark-theme .descripcion label,
-body.dark-theme .comentarios label,
-body.dark-theme .detalle-linea label {
+body.dark-theme .comentarios label {
   color: #ffffff;
 }
 body.light-theme .task-card {
@@ -34,12 +32,7 @@ body.light-theme .task-card {
 body.dark-theme .task-card {
   background: #ffffff36;
 }
-/* Modo claro: color para inputs, selects y textareas */
-body.light-theme .detalle-linea input,
-body.light-theme .detalle-linea select,
-body.light-theme .detalle-linea textarea,
-body.light-theme .grupo-tiempo input,
-body.light-theme .grupo-tiempo select,
+/* Modo claro: color para inputs, selects y textareas (excluye controles del modal Editar) */
 body.light-theme .nombre-tarea input[type="text"],
 body.light-theme .acciones-wrapper input,
 body.light-theme .fallas-wrapper input,
@@ -49,12 +42,7 @@ body.light-theme .comentarios textarea {
   background-color: #f0f4ff;
   color: #222;
 }
-/* Modo oscuro: color para inputs, selects y textareas */
-body.dark-theme .detalle-linea input,
-body.dark-theme .detalle-linea select,
-body.dark-theme .detalle-linea textarea,
-body.dark-theme .grupo-tiempo input,
-body.dark-theme .grupo-tiempo select,
+/* Modo oscuro: color para inputs, selects y textareas (excluye controles del modal Editar) */
 body.dark-theme .nombre-tarea input[type="text"],
 body.dark-theme .acciones-wrapper input,
 body.dark-theme .fallas-wrapper input,
@@ -158,6 +146,224 @@ body.dark-theme .header-bar {
   color: #000000;
 }
 
+/* Registros title: clean, minimal and robust theme-specific styles */
+#registros-title {
+  margin-bottom: 0.5rem;
+  color: #000000 !important;
+  text-shadow: none !important;
+  -webkit-text-fill-color: #000000 !important;
+  -webkit-text-stroke: 0px !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+/* Explicit theme variants (only ID-specific rules) */
+body.registros-page.light-theme #registros-title {
+  color: #000000 !important;
+  text-shadow: none !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+body.registros-page.dark-theme #registros-title {
+  color: #FFD700 !important;
+  text-shadow: none !important;
+  -webkit-text-fill-color: #FFD700 !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Controles: estilos limpios por ID / clase para modo claro y oscuro
+   - Definimos estilos específicos por ID para evitar interferencias.
+   - Reiniciamos text-shadow / text-fill para evitar efectos heredados.
+*/
+#registros-subtitle { color: #555; margin-top:0; margin-bottom:1rem; }
+body.registros-page.dark-theme #registros-subtitle { color: #d7eef6; }
+
+#registros-count { margin-left:auto; font-weight:600; color: #0b1220; }
+body.registros-page.dark-theme #registros-count { color: #d9eef6; }
+
+/* Botones principales */
+#btn-refrescar { background: #0097A9; color: #ffffff; }
+body.registros-page.dark-theme #btn-refrescar { background: #0097A9; color: #ffffff; }
+
+#btn-vaciar { background: linear-gradient(180deg,#DA291C,#DA291C); color: #ffffff; }
+body.registros-page.dark-theme #btn-vaciar { background: linear-gradient(180deg,#DA291C,#DA291C); color: #ffffff; }
+
+#btn-descargar-todo { background: linear-gradient(180deg,#FF8200,#FF8200); color: #ffffff; }
+body.registros-page.dark-theme #btn-descargar-todo { background: linear-gradient(180deg,#FF8200,#FF8200); color: #ffffff; }
+
+/* Buscador y select */
+#buscador-texto { flex: 1 1 auto; min-width: 0; padding:0.5rem; border-radius:6px; border:1px solid #000000; background: #f0f4ff; color:#000000; }
+body.registros-page.dark-theme #buscador-texto { background:#ffffff; color:#ffffff; border:1px solid rgba(255, 255, 255, 0.04); }
+#buscador-columna { padding:0.45rem; border-radius:6px; border:1px solid #000000; background: #f0f4ff; color:#000000; }
+body.registros-page.dark-theme #buscador-columna { background:#ffffff; color:#000000; border:1px solid rgba(0, 0, 0, 0.04); }
+#buscador-fecha { padding:0.5rem; border-radius:6px; border:1px solid #32587e; background: #32587e; color:#fdfdfd; }
+/* Color del icono del selector de fecha (WebKit) */
+#buscador-fecha::-webkit-calendar-picker-indicator {
+  filter: invert(1) sepia(1) saturate(4) hue-rotate(180deg) brightness(1) !important;
+  cursor: pointer;
+}
+/* Variante modo oscuro */
+body.registros-page.dark-theme #buscador-fecha { background:#ffffff; color:#000000; border:1px solid rgb(0, 0, 0); }
+/* Forzar icono negro en modo oscuro (WebKit) */
+body.registros-page.dark-theme #buscador-fecha::-webkit-calendar-picker-indicator {
+  filter: brightness(0) saturate(100%) !important;
+  cursor: pointer;
+}
+
+/* Botones ghost / neutral */
+#btn-clear-search { background: #DA291C; color: #ffffff; }
+body.registros-page.dark-theme #btn-clear-search { background: #DA291C; color: #ffffff; }
+
+/* Clean ID-specific styles for dropdown buttons (light/dark variants) */
+#btn-column-filters,
+#btn-acciones,
+#btn-filtrar-fecha {
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  background: #32587e;
+  color: #ffffff;
+  border: none;
+}
+#btn-column-filters svg, #btn-acciones svg, #btn-filtrar-fecha svg { width: 18px; height: 18px; }
+#btn-column-filters:hover, #btn-acciones:hover, #btn-filtrar-fecha:hover { filter: brightness(0.95); cursor: pointer; }
+#btn-column-filters:focus, #btn-acciones:focus, #btn-filtrar-fecha:focus { outline: 3px solid rgba(50,88,126,0.12); }
+
+/* Dark theme variants for the buttons */
+body.registros-page.dark-theme #btn-column-filters,
+body.registros-page.dark-theme #btn-acciones,
+body.registros-page.dark-theme #btn-filtrar-fecha {
+  background: #ffffff;
+  color: #000000;
+  border: 1px solid rgb(0, 0, 0);
+}
+
+/* Dropdown lists base positioning (colors set per-ID to keep them independent) */
+.column-filters-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1200;
+  min-width: 180px;
+  max-width: 320px;
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  display: none;
+}
+
+/* Unified dropdown styles for Column Filters, Acciones and Filtrar por Fecha */
+#column-filters-list.column-filters-dropdown,
+#acciones-list.column-filters-dropdown,
+#filtrar-fecha-list.column-filters-dropdown {
+  min-width: 180px;
+  max-width: 320px;
+  background: #ffffff; /* Light bg */
+  color: #000000; /* Light text */
+  border: 1px solid #e6edf2; /* Light border */
+  box-shadow: 0 8px 24px rgba(16,24,40,0.08); /* Light shadow */
+  border-radius: 8px;
+  padding: 8px;
+}
+#column-filters-list.column-filters-dropdown .dropdown-item,
+#acciones-list.column-filters-dropdown .dropdown-item,
+#filtrar-fecha-list.column-filters-dropdown .dropdown-item {
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+#column-filters-list.column-filters-dropdown .dropdown-item:last-child,
+#acciones-list.column-filters-dropdown .dropdown-item:last-child,
+#filtrar-fecha-list.column-filters-dropdown .dropdown-item:last-child { margin-bottom: 0; }
+#column-filters-list.column-filters-dropdown .dropdown-item button,
+#acciones-list.column-filters-dropdown .dropdown-item button,
+#filtrar-fecha-list.column-filters-dropdown .dropdown-item button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: inherit;
+  border: none;
+  padding: 6px 0;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+#column-filters-list.column-filters-dropdown .dropdown-item label,
+#acciones-list.column-filters-dropdown .dropdown-item label,
+#filtrar-fecha-list.column-filters-dropdown .dropdown-item label { color: inherit; }
+#column-filters-list.column-filters-dropdown .dropdown-item:hover,
+#acciones-list.column-filters-dropdown .dropdown-item:hover,
+#filtrar-fecha-list.column-filters-dropdown .dropdown-item:hover { background: #f5f8ff; }
+
+/* Dark theme variants (shared) */
+body.registros-page.dark-theme #column-filters-list.column-filters-dropdown,
+body.registros-page.dark-theme #acciones-list.column-filters-dropdown,
+body.registros-page.dark-theme #filtrar-fecha-list.column-filters-dropdown {
+  background: #ffffff; /* Forzar fondo blanco en modo oscuro */
+  color: #000000; /* Forzar texto negro en modo oscuro */
+  border: 1px solid #e6edf2; /* borde claro para contraste */
+  box-shadow: 0 8px 24px rgba(16,24,40,0.08); /* sombra suave (modo claro) */
+}
+body.registros-page.dark-theme #column-filters-list.column-filters-dropdown .dropdown-item:hover,
+body.registros-page.dark-theme #acciones-list.column-filters-dropdown .dropdown-item:hover,
+body.registros-page.dark-theme #filtrar-fecha-list.column-filters-dropdown .dropdown-item:hover { background: #f5f8ff; }
+/* Asegurar color de labels y botones en modo oscuro */
+body.registros-page.dark-theme #column-filters-list.column-filters-dropdown .dropdown-item label,
+body.registros-page.dark-theme #acciones-list.column-filters-dropdown .dropdown-item label,
+body.registros-page.dark-theme #filtrar-fecha-list.column-filters-dropdown .dropdown-item label { color: #000000; }
+body.registros-page.dark-theme #column-filters-list.column-filters-dropdown .dropdown-item button,
+body.registros-page.dark-theme #acciones-list.column-filters-dropdown .dropdown-item button,
+body.registros-page.dark-theme #filtrar-fecha-list.column-filters-dropdown .dropdown-item button { color: #000000; }
+
+/* Asegurar que los labels y wrappers generados dinámicamente en Column Filters muestren texto negro */
+#column-filters-list.column-filters-dropdown label,
+#column-filters-list.column-filters-dropdown input,
+#column-filters-list.column-filters-dropdown > div { color: #000000 !important; }
+/* Forzar color en modo oscuro también (sobrescribir herencias) */
+body.registros-page.dark-theme #column-filters-list.column-filters-dropdown label,
+body.registros-page.dark-theme #column-filters-list.column-filters-dropdown input,
+body.registros-page.dark-theme #column-filters-list.column-filters-dropdown > div { color: #000000 !important; }
+
+/* Acciones styles replaced by unified dropdown block above */
+
+/* Filtrar por Fecha styles replaced by unified dropdown block above */
+
+/* Dropdowns generados en la tabla (filter-dropdown) - apariencia y sombra */
+.registros-page .filter-dropdown {
+  min-width: 150px;
+  max-width: 260px;
+  background: #ffffff;
+  color: #0b1220;
+  border: 1px solid #e6edf2;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08); /* sombra ligera */
+  border-radius: 8px;
+  padding: 8px;
+  z-index: 1200;
+}
+.registros-page .filter-dropdown .dropdown-item { padding: 6px 8px; border-radius: 6px; margin-bottom: 4px; }
+.registros-page .filter-dropdown .dropdown-item:last-child { margin-bottom: 0; }
+.registros-page .filter-dropdown .dropdown-item button { width: 100%; text-align: left; background: transparent; color: inherit; border: none; padding: 6px 0; font-size: 0.95rem; cursor: pointer; }
+.registros-page .filter-dropdown .dropdown-item:hover { background: #f0f7ff; }
+body.registros-page.dark-theme .registros-page .filter-dropdown {
+  background: #07121a;
+  color: #d9eef6;
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6); /* sombra intensa en dark */
+}
+body.registros-page.dark-theme .registros-page .filter-dropdown .dropdown-item:hover { background: rgba(255,255,255,0.03); }
+
+/* Acciones en fila (eliminar / editar) */
+.row-btn-delete { padding:0.35rem 0.5rem; font-size:0.9rem; }
+body.registros-page.light-theme .row-btn-delete { background:#DA291C; color:#fff; }
+body.registros-page.dark-theme .row-btn-delete { background:#DA291C; color:#fff; }
+.row-btn-edit { padding:0.35rem 0.5rem; font-size:0.9rem; margin-left:0.4rem; }
+body.registros-page.light-theme .row-btn-edit { background:#f8fafc; color:#000000; border:1px solid rgba(0, 0, 0, 0.459); }
+body.registros-page.dark-theme .row-btn-edit { background:rgb(255, 255, 255); color:#000000; border:1px solid rgba(0, 0, 0, 0.459); }
+
+/* Disable text artifacts */
+#registros-subtitle, #btn-refrescar, #btn-vaciar, #btn-descargar-todo, #buscador-texto, #btn-clear-search, #btn-column-filters, #btn-acciones, #btn-filtrar-fecha, .row-btn-delete, .row-btn-edit { text-shadow:none !important; -webkit-text-fill-color:inherit !important; }
+
+
 .logo img {
   height: 40px;
   margin-right: 30px;
@@ -179,11 +385,12 @@ body.dark-theme .header-bar {
   font-weight: bold;
 }
 
-.submenu {
+/* Header menu: scoped submenu rules to avoid interfering with Registros dropdowns */
+.header-menu .submenu {
   position: absolute;
   top: 100%;
   left: 0;
-  background: #e9e9e9 100%;
+  background: #e9e9e9;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   border-radius: 12px;
   padding: 8px 0 6px 0;
@@ -191,20 +398,21 @@ body.dark-theme .header-bar {
   flex-direction: column;
   min-width: 120px;
   box-sizing: border-box;
-  border: #000203;
   transition: opacity 0.3s, transform 0.3s;
   opacity: 0;
   transform: translateX(-50%) translateY(10px);
 }
 
-.menu-item:hover .submenu {
+.header-menu .menu-item:hover .submenu {
   display: flex;
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
 
-.submenu a:hover {
+.header-menu .submenu a:hover {
   background-color: #ffffff;
+  color: #00375e;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .divider {
@@ -319,13 +527,14 @@ body.dark-theme .header-bar {
   transition: background-color 0.3s;
 }
 
-.menu-item:hover .submenu {
+/* Header-scoped menu hover */
+.header-menu .menu-item:hover .submenu {
   display: flex;
   opacity: 1;
   transform: translateY(0);
 }
 
-.submenu a {
+.header-menu .submenu a {
   padding: 10px 24px;
   text-decoration: none;
   color: #000000;
@@ -335,7 +544,7 @@ body.dark-theme .header-bar {
   transition: background 0.2s, color 0.2s, box-shadow 0.2s;
 }
 
-.submenu a:hover {
+.header-menu .submenu a:hover {
   background-color: #f0f0f0;
   color: #00375e;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
@@ -780,8 +989,13 @@ button:focus, .btn:focus, input[type="button"]:focus {
 /* Centrar el texto dentro de los inputs y selects (Inicio/Final) */
 .registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo .fixed-170,
 .registros-page .fixed-170 {
-  text-align: center !important; /* centrar texto horizontalmente */
+  text-align: center !important; /* centrar valor seleccionado horizontalmente */
   vertical-align: middle !important;
+  font-size: 0.95rem !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 /* Asegurar que los selects muestren el texto centrado en la mayoría de navegadores */
@@ -810,12 +1024,13 @@ button:focus, .btn:focus, input[type="button"]:focus {
   font-size: 0.95rem !important;
 }
 
-/* Asegurar que las opciones del select también se centren en navegadores que lo soporten */
+/* Opciones del select: alineadas a la izquierda para lectura clara */
 .registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo select.fixed-170 option {
-  text-align: center !important;
+  text-align: left !important;
   line-height: 34px !important;
   font-size: 0.95rem !important;
-}
+  padding-left: 0.6rem !important;
+} 
 
 /* Quitar flecha por defecto en algunos navegadores para facilitar el centrado visual (opcional) */
 .registros-page #edit-modal .modal-content .barra-tiempo .grupo-tiempo select.fixed-170::-ms-expand {
@@ -839,8 +1054,8 @@ button:focus, .btn:focus, input[type="button"]:focus {
   padding-right: 34px !important; /* dejar espacio para la flecha */
   text-align-last: center !important;
   -moz-text-align-last: center !important;
-  height: 34px !important;
-  line-height: 34px !important;
+  height: 36px !important;
+  line-height: 36px !important;
 }
 
 /* Ajuste fino para inputs: quitar padding vertical y usar line-height exacto */
@@ -873,12 +1088,131 @@ button:focus, .btn:focus, input[type="button"]:focus {
   -moz-text-align-last: center !important;
 }
 
-/* Aplicar el mismo estilo visual de 'Tiempo: HH:MM:SS' usado en SUIC Data */
-.registros-page #edit-diferencia-horas {
-  color: #0097A9; /* mismo color que #diferencia-horas en styles.css */
-  font-weight: bold;
+/* --- Modal Editar Tipificación: estilos específicos por ID (limpios y con variantes por tema) --- */
+/* Título */
+.registros-page #edit-modal .modal-content h2#edit-modal-title { color: #0b1220; margin: 0 0 0.6rem 0; }
+body.registros-page.dark-theme .registros-page #edit-modal .modal-content h2#edit-modal-title,
+body.registros-page.dark-theme #edit-modal .modal-content h2#edit-modal-title { color: #FFD700 !important; }
+
+/* Labels dentro del modal */
+.registros-page #edit-modal .modal-content label { color: #000000; font-weight:600; display:block; margin-bottom:0.35rem; }
+body.registros-page.dark-theme .registros-page #edit-modal .modal-content label,
+body.registros-page.dark-theme #edit-modal .modal-content label { color: #ffffff !important; }
+
+/* Inputs / selects / textarea dentro del modal */
+.registros-page #edit-modal .modal-content input,
+.registros-page #edit-modal .modal-content select,
+.registros-page #edit-modal .modal-content textarea {
+  background: #f0f4ff; color: #000000; border:1px solid #ccc; padding:0.5rem; border-radius:6px; box-sizing:border-box;
 }
-.registros-page body.dark-theme #edit-diferencia-horas,
-body.dark-theme .registros-page #edit-diferencia-horas {
-  color: #FFD700 !important; /* misma prioridad para modo oscuro */
+body.registros-page.dark-theme #edit-modal .modal-content input,
+body.registros-page.dark-theme #edit-modal .modal-content select,
+body.registros-page.dark-theme #edit-modal .modal-content textarea {
+  background: #f0f4ff; color: #000000; border:1px solid rgba(255,255,255,0.04);
+}
+
+/* Estilo para 'Tiempo: HH:MM:SS' en modal */
+.registros-page #edit-diferencia-horas { color: #0097A9; font-weight:bold; margin-left:1rem; }
+body.registros-page.dark-theme #edit-diferencia-horas { color: #FFD700 !important; }
+
+/* Selects Inicio / Final: valor mostrado centrado (h/v) y opciones alineadas a la izquierda */
+#edit-inicio, #edit-final {
+  font-size: 0.95rem;
+  text-align: center; /* centrar valor seleccionado horizontalmente */
+  text-align-last: center; /* compatibilidad cross-browser */
+  -moz-text-align-last: center;
+  vertical-align: middle;
+  height: 36px; /* control de altura para centrar verticalmente */
+  line-height: 36px;
+  padding: 0 2.25rem 0 0.75rem; /* espacio derecho para flecha, izquierdo para separación */
+  box-sizing: border-box;
+}
+#edit-inicio option, #edit-final option {
+  text-align: left; /* opciones alineadas a la izquierda */
+  font-size: 0.95rem;
+  line-height: normal;
+  padding-left: 0.6rem;
+}
+#edit-inicio, #edit-final, #edit-hora-inicio, #edit-hora-final {
+  -webkit-appearance:none !important; -moz-appearance:none !important; appearance:none !important;
+  padding-top: 0 !important; padding-bottom: 0 !important;
+} 
+
+/* Tipos de Canales (input list) */
+#edit-tipos-canales { padding:0.5rem; }
+#edit-tipos-canales::placeholder { color: #888; }
+body.registros-page.dark-theme #edit-tipos-canales { color: #d9eef6; background:#07121a; }
+
+/* Botones del modal */
+#edit-cancel { background: #DA291C; color: #ffffff; }
+body.registros-page.dark-theme #edit-cancel { background: #DA291C; color: #ffffff; }
+#edit-save { background: linear-gradient(180deg,#0097A9,#0097A9); color:#fff; }
+body.registros-page.dark-theme #edit-save { background: linear-gradient(180deg,#0097A9,#0097A9); color:#fff; }
+#edit-modal-close { background: rgb(23, 64, 141); color:rgb(23, 64, 141)8ad; border-radius:6px; padding:0.2rem 0.5rem; }
+body.registros-page.dark-theme #edit-modal-close { color: #ffffff; }
+
+/* Asegurar que los labels y controles del modal no hereden sombras o text-fill extra */
+#edit-modal .modal-content label, #edit-modal .modal-content input, #edit-modal .modal-content select, #edit-modal .modal-content textarea { text-shadow:none !important; -webkit-text-fill-color:inherit !important; }
+
+/* --- End modal styles --- */
+
+/* Registros table: clean, theme-aware styles */
+.registros-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #f5f5f5; /* fondo gris claro (modo claro) */
+  color: #000000; /* letras negro (modo claro) */
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #ffffff;
+}
+/* Encabezado */
+.registros-table thead th {
+  background: #ededed; /* gris claro para encabezado (modo claro) */
+  color: #000000; /* letras negro */
+  border-bottom: 1px solid #e6edf2;
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 700;
+  vertical-align: middle;
+}
+/* Iconos del encabezado (modo claro) */
+.registros-table thead th .filter-icon svg,
+.registros-table thead th svg { stroke: #000000; }
+/* Hover del encabezado */
+.registros-table thead th:hover { background: rgba(128,128,128,0.06); }
+
+.registros-table tbody td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #f0f3f6;
+  color: #000000; /* letras negro (modo claro) */
+}
+/* Hover de filas (modo claro) */
+.registros-table tbody tr:hover {
+  background: rgba(128,128,128,0.06); /* gris transparente */
+}
+
+/* Dark theme variants: usar fondo gris y texto negro según petición */
+body.registros-page.dark-theme .registros-table {
+  background: #ffffff; /* fondo gris (modo oscuro) */
+  color: #000000; /* letras negro */
+  border: 1px solid #cfcfcf;
+}
+body.registros-page.dark-theme .registros-table thead th {
+  background: #bdbdbd; /* mismo gris para encabezado */
+  color: #000000; /* letras negro */
+  border-bottom: 1px solid #cfcfcf;
+}
+/* Iconos del encabezado (modo oscuro): gris oscuro */
+body.registros-page.dark-theme .registros-table thead th .filter-icon svg,
+body.registros-page.dark-theme .registros-table thead th svg { stroke: #4a4a4a; }
+/* Hover del encabezado (modo oscuro) */
+body.registros-page.dark-theme .registros-table thead th:hover { background: rgba(128,128,128,0.06); }
+
+body.registros-page.dark-theme .registros-table tbody td {
+  color: #000000; /* letras negro en modo oscuro */
+  border-bottom: 1px solid #cfcfcf;
+}
+body.registros-page.dark-theme .registros-table tbody tr:hover {
+  background: rgba(128,128,128,0.06); /* gris transparente */
 }

@@ -72,6 +72,9 @@ body.dark-theme .comentarios textarea {
 body.dark-theme #diferencia-horas {
   color: #FFD700 !important; /* Modo oscuro */
 }
+
+/* Auto-guardado por tiempo eliminado - estilos removidos */
+/* Si necesitas revertir esta eliminación, restaurar bloque original */
 /* Contenedor para los iconos de acción con borde semiluna */
 .iconos-acciones-wrapper {
   margin-left: 12rem;
@@ -564,6 +567,23 @@ body.dark-theme label[for="hora-final"] {
   background-color: #f0f0f0;
 }
 
+/* Campos para 'Competencias' (ocultos por defecto) */
+#competencias-fields, #edit-competencias-fields {
+  display: none; /* se controla desde JS */
+  grid-template-columns: 1fr 1fr; /* dos columnas iguales */
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+/* Ajuste para las columnas internas (label + input) */
+.cant-escuelas { grid-template-columns: 120px 1fr; margin-bottom: 0.1rem; }
+.cant-candidatos { grid-template-columns: 120px 1fr; margin-bottom: 0.1rem; }
+/* Tipos de Canales ocupa toda la fila en el grid de competencias para tener más ancho */
+.tipos-canales { grid-template-columns: 150px 1fr; grid-column: 1 / -1; margin-bottom: 0.6rem; }
+
+/* Asegurar inputs numéricos ocupen el ancho disponible */
+#cant-escuelas, #cant-candidatos, #tipos-canales, #edit-cant-escuelas, #edit-cant-candidatos, #edit-tipos-canales { max-width: 100%; }
+
 .detalle-linea select option {
   background-color: #f0f0f0;
   color: #000000;
@@ -571,6 +591,7 @@ body.dark-theme label[for="hora-final"] {
 
 /* Campos específicos con ancho máximo */
 #tiempo       { max-width: 500px; }
+#tipos-canales{ max-width: 500px; }
 #actualizado  { max-width: 480px; }
 #documentos   { max-width: 540px; }
 #categoria    { max-width: 600px; }

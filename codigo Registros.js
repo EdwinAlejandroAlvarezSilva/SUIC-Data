@@ -132,7 +132,7 @@ function crearTabla(registros, storedIndices) {
     "Detalle", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión",
     "Nuevo/Actualizado", "Cant Documentos", "Categoría", "Analista/Área",
     "Nombre Documento", "Asignado a", "Prioridad",
-    "Actualizado", "Tiempo"
+    "Actualizado", "Tiempo", "Cant Escuelas", "Cant Candidatos", "Tipos de Canales"
   ];
 
   const table = document.createElement('table');
@@ -402,7 +402,7 @@ function crearTabla(registros, storedIndices) {
     // Columna de acciones (eliminar + editar)
     const tdAcc = document.createElement('td');
     const btnEliminar = document.createElement('button');
-    btnEliminar.className = 'btn btn-sm btn-danger';
+    btnEliminar.className = 'btn btn-sm btn-danger row-btn-delete';
     btnEliminar.title = 'Eliminar registro';
     btnEliminar.innerHTML = `
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m5 0V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2"/></svg>
@@ -423,8 +423,7 @@ function crearTabla(registros, storedIndices) {
     tdAcc.appendChild(btnEliminar);
 
     const btnEditar = document.createElement('button');
-    btnEditar.className = 'btn btn-sm btn-neutral';
-    btnEditar.style.marginLeft = '0.4rem';
+    btnEditar.className = 'btn btn-sm btn-neutral row-btn-edit';
     btnEditar.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span>Editar</span>`;
     btnEditar.title = 'Editar registro';
     btnEditar.addEventListener('click', () => openEditModal(realIndex));
@@ -459,7 +458,7 @@ function openEditModal(index) {
   const fila = datos[index];
   if (!fila) return alert('Registro no encontrado');
 
-  // Mapear campos del modal con el array (misma posición que en guardar)
+  // Mapear campos del modal con el array (hasta 'prioridad'); Cant fields se asignan después (orden de guardado: prioridad, actualizado, tiempo, cant-escuelas, cant-candidatos)
   const ids = [
     'edit-hora-inicio','edit-inicio','edit-hora-final','edit-final','edit-nombre','edit-acciones',
     'edit-detalle','edit-fallas','edit-descripcion','edit-comentarios','edit-tiempo','edit-actualizado',
@@ -472,15 +471,36 @@ function openEditModal(index) {
     el.value = fila[i] || '';
   });
 
-  // Si el registro tiene un campo extra al final (cronómetro en HH:MM:SS), cargarlo en edit-cronometro
+  // Forzar actualización de visibilidad de campos relacionados con la categoría (si hay listener)
+  try {
+    const catEl = document.getElementById('edit-categoria');
+    if (catEl) catEl.dispatchEvent(new Event('input', { bubbles: true }));
+  } catch(e) {}
+
+  // Si el registro tiene cronómetro en alguna de las posiciones finales (no necesariamente la última), buscarlo entre las últimas 4 posiciones
   try {
     const cronEl = document.getElementById('edit-cronometro');
     if (cronEl) {
-      const last = fila.length - 1;
-      const possible = fila[last];
-      cronEl.value = (typeof possible === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(possible).trim())) ? String(possible).trim() : '';
+      let found = '';
+      for (let i = fila.length - 1; i >= Math.max(0, fila.length - 4); i--) {
+        const possible = fila[i];
+        if (typeof possible === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(possible).trim())) { found = String(possible).trim(); break; }
+      }
+      cronEl.value = found;
     }
   } catch (e) { /* ignore */ }
+
+  // Asignar Cant Escuelas / Cant Candidatos desde las posiciones esperadas (si existen)
+  try{
+    const ce = document.getElementById('edit-cant-escuelas');
+    const cc = document.getElementById('edit-cant-candidatos');
+    // Orden de guardado: ... prioridad (idx 17), actualizado (18), tiempo (19), cant-escuelas (20), cant-candidatos (21)
+    ce && (ce.value = typeof fila[20] !== 'undefined' ? fila[20] : '');
+    cc && (cc.value = typeof fila[21] !== 'undefined' ? fila[21] : '');
+    // Tipos de Canales (posición siguiente, si existe)
+    const tc = document.getElementById('edit-tipos-canales');
+    tc && (tc.value = typeof fila[22] !== 'undefined' ? fila[22] : '');
+  }catch(e){}
 
   // Al llenar el modal, también actualizar el datalist 'detalles' según la categoría actual
   const catVal = document.getElementById('edit-categoria')?.value || '';
@@ -581,6 +601,27 @@ function saveEdit() {
   const index = Number(modal.dataset.editIndex);
   if (isNaN(index)) return alert('Índice inválido');
 
+  // Si la categoría en el modal es 'Competencias' y los campos de competencias del modal están visibles,
+  // exigir que edit-cant-escuelas y edit-cant-candidatos no estén vacíos antes de guardar.
+  try {
+    const cat = document.getElementById('edit-categoria');
+    const wrapper = document.getElementById('edit-competencias-fields');
+    const isVisible = wrapper && window.getComputedStyle(wrapper).display !== 'none';
+    const catVal = (cat && (cat.value || '').trim().toLowerCase()) || '';
+    if (catVal === 'competencias' && isVisible) {
+      const ce = document.getElementById('edit-cant-escuelas');
+      const cc = document.getElementById('edit-cant-candidatos');
+      const ceEmpty = !ce || String(ce.value || '').trim() === '';
+      const ccEmpty = !cc || String(cc.value || '').trim() === '';
+      const tc = document.getElementById('edit-tipos-canales');
+      const tcEmpty = !tc || String(tc.value || '').trim() === '';
+      if (ceEmpty || ccEmpty || tcEmpty) {
+        alert("Para la categoría 'Competencias' debes completar 'Cant Escuelas', 'Cant Candidatos' y 'Tipos de Canales' antes de guardar los cambios.");
+        return;
+      }
+    }
+  } catch (e) { /* ignore */ }
+
   const ids = [
     'edit-hora-inicio','edit-inicio','edit-hora-final','edit-final','edit-nombre','edit-acciones',
     'edit-detalle','edit-fallas','edit-descripcion','edit-comentarios','edit-tiempo','edit-actualizado',
@@ -620,6 +661,18 @@ function saveEdit() {
     nuevo.push(cron ? (cron.value || '') : '');
   } catch (e) { nuevo.push(''); }
 
+  // Añadir al final Cant Escuelas y Cant Candidatos (mantener orden: actualizado, tiempo, cant-escuelas, cant-candidatos)
+  try{
+    const ce = document.getElementById('edit-cant-escuelas');
+    const cc = document.getElementById('edit-cant-candidatos');
+    const tc = document.getElementById('edit-tipos-canales');
+    const valCe = ce && ce.value !== '' ? Number(ce.value) : '';
+    const valCc = cc && cc.value !== '' ? Number(cc.value) : '';
+    const valTc = tc && tc.value ? tc.value : '';
+    nuevo.push(valCe);
+    nuevo.push(valCc);
+    nuevo.push(valTc);
+  }catch(e){ nuevo.push(''); nuevo.push(''); }
   // Reemplazar el registro editado y moverlo al inicio para que aparezca primero
   try {
     // Eliminar el registro original en su posición
@@ -653,7 +706,7 @@ function _serializeModalFields() {
   const ids = [
     'edit-hora-inicio','edit-inicio','edit-hora-final','edit-final','edit-nombre','edit-acciones',
     'edit-detalle','edit-fallas','edit-descripcion','edit-comentarios','edit-tiempo','edit-actualizado',
-    'edit-documentos','edit-categoria','edit-analista','edit-documento','edit-asignado','edit-prioridad','edit-cronometro'
+    'edit-documentos','edit-categoria','edit-analista','edit-documento','edit-asignado','edit-prioridad','edit-cant-escuelas','edit-cant-candidatos','edit-tipos-canales','edit-cronometro'
   ];
   const data = {};
   ids.forEach(id => {
@@ -719,6 +772,32 @@ function _restoreModalDraftPrompt() {
     if (!ok) return;
     // Aplicar campos
     _applySerializedModalFields(draft.fields);
+
+    // Si el borrador del modal incluía un valor para 'edit-tiempo', marcarlo como editado manualmente
+    try {
+      const hasTiempo = draft.fields && draft.fields['edit-tiempo'] && String(draft.fields['edit-tiempo'].value || '').trim() !== '';
+      if (hasTiempo) {
+        const tEl = document.getElementById('edit-tiempo');
+        if (tEl) tEl.dataset.manual = 'true';
+      }
+    } catch (e) { /* ignore */ }
+
+    // Si el borrador del modal incluía valores para 'Cant Escuelas' o 'Cant Candidatos',
+    // forzar la visibilidad de los campos en el modal para que el usuario pueda verlos.
+    try {
+      const hasCe = draft.fields && draft.fields['edit-cant-escuelas'] && String(draft.fields['edit-cant-escuelas'].value || '').trim() !== '';
+      const hasCc = draft.fields && draft.fields['edit-cant-candidatos'] && String(draft.fields['edit-cant-candidatos'].value || '').trim() !== '';
+      const tcField = draft.fields && draft.fields['edit-tipos-canales'];
+      const hasTc = tcField && ((tcField.type === 'input' && String(tcField.value || '').trim() !== '') || (tcField.type === 'select' && typeof tcField.selectedIndex === 'number' && tcField.selectedIndex > 0));
+      const wrapper = document.getElementById('edit-competencias-fields');
+      const cat = document.getElementById('edit-categoria');
+      // Disparar evento 'input' para que la lógica normal actualice visibilidad
+      if (cat) cat.dispatchEvent(new Event('input', { bubbles: true }));
+      if ((hasCe || hasCc || hasTc) && wrapper && wrapper.style.display === 'none') {
+        wrapper.style.display = 'grid';
+        wrapper.setAttribute('aria-hidden', 'false');
+      }
+    } catch (e) { /* ignore */ }
     // Restaurar cronómetro modal: calcular acumulado si venía corriendo y dejarlo detenido
     try {
       if (draft.chrono) {
@@ -779,7 +858,7 @@ function poblarSelectorColumnas() {
     "Detalle", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión",
     "Nuevo/Actualizado", "Cant Documentos", "Categoría", "Analista/Área",
     "Nombre Documento", "Asignado a", "Prioridad", "Actualizado",
-    "Tiempo"
+    "Tiempo", "Cant Escuelas", "Cant Candidatos", "Tipos de Canales"
   ];
   const optAll = document.createElement('option');
   optAll.value = 'all';
@@ -858,7 +937,7 @@ function generarControlesColumnas() {
     "Detalle", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión",
     "Nuevo/Actualizado", "Cant Documentos", "Categoría", "Analista/Área",
     "Nombre Documento", "Asignado a", "Prioridad", "Actualizado",
-    "Tiempo"
+    "Tiempo", "Cant Escuelas", "Cant Candidatos", "Tipos de Canales"
   ];
 
   // Leer estado guardado o por defecto true
@@ -886,8 +965,11 @@ function generarControlesColumnas() {
     checkboxes.forEach(cb => { cb.checked = chkAll.checked; });
     // Guardar y re-render
     const estados = Array.from(checkboxes).map(cb => cb.checked);
-    // asegurarse de incluir la columna Acciones si existe al final
-    localStorage.setItem('registros_columns_visible', JSON.stringify(estados.concat([true])));
+    // asegurarse de incluir la columna Acciones si exista al final
+    const saved = estados.concat([true]);
+    localStorage.setItem('registros_columns_visible', JSON.stringify(saved));
+    // Aplicar visibilidad inmediatamente y re-renderizar
+    try { applyColumnsVisibility(saved); } catch (e) {}
     cargarYMostrar();
   });
 
@@ -917,7 +999,10 @@ function generarControlesColumnas() {
       // actualizar estado del 'Todas'
       chkAll.checked = estados.every(v => v === true);
       // Guardar (añadir true para la columna acciones al final si corresponde)
-      localStorage.setItem('registros_columns_visible', JSON.stringify(estados.concat([true])));
+      const saved = estados.concat([true]);
+      localStorage.setItem('registros_columns_visible', JSON.stringify(saved));
+      // Aplicar visibilidad inmediatamente
+      try { applyColumnsVisibility(saved); } catch (e) {}
       cargarYMostrar();
     });
 
@@ -948,6 +1033,40 @@ function generarControlesColumnas() {
   }
 }
 
+// Aplicar visibilidad de columnas en la tabla ya renderizada (fallback directo)
+function applyColumnsVisibility(visibleArray) {
+  try {
+    if (!Array.isArray(visibleArray)) {
+      const raw = localStorage.getItem('registros_columns_visible');
+      visibleArray = raw ? JSON.parse(raw) : null;
+    }
+    if (!Array.isArray(visibleArray)) return;
+    const table = document.querySelector('.registros-table');
+    if (!table) return;
+    // Si la columna de selección está activa, todo se desplaza una columna a la derecha
+    const offset = showSelectionColumn ? 1 : 0;
+
+    const ths = table.querySelectorAll('thead th');
+    for (let i = 0; i < ths.length; i++) {
+      const logicalIdx = i - offset;
+      if (logicalIdx >= 0 && logicalIdx < visibleArray.length) {
+        ths[i].style.display = visibleArray[logicalIdx] ? '' : 'none';
+      }
+    }
+
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(tr => {
+      const tds = tr.querySelectorAll('td');
+      for (let i = 0; i < tds.length; i++) {
+        const logicalIdx = i - offset;
+        if (logicalIdx >= 0 && logicalIdx < visibleArray.length) {
+          tds[i].style.display = visibleArray[logicalIdx] ? '' : 'none';
+        }
+      }
+    });
+  } catch (e) { /* ignore */ }
+}
+
 function cargarYMostrar() {
   let datos = [];
   try {
@@ -965,6 +1084,12 @@ function cargarYMostrar() {
   if (document.getElementById('chk-fecha-actualizado')?.checked) columnasFecha.push(18); // Actualizado
   const { rows, indices } = filtrarRegistrosWithIndices(datos, texto, columna, fecha, columnasFecha);
   crearTabla(rows, indices);
+  // Aplicar visibilidad guardada como respaldo (en caso de que la tabla ya exista)
+  try {
+    const rawSaved = localStorage.getItem('registros_columns_visible');
+    const saved = rawSaved ? JSON.parse(rawSaved) : null;
+    if (Array.isArray(saved)) applyColumnsVisibility(saved);
+  } catch (e) { /* ignore */ }
 }
 
 // Colocar hora actual en el modal según tipo ('inicio' | 'final')
@@ -1237,15 +1362,32 @@ window.addEventListener('load', () => {
   if (detalleMain) {
     detalleMain.addEventListener('input', function() {
       const tEl = document.getElementById('tiempo');
-      if (tEl) tEl.value = getTiempoForDetalle(this.value);
+      if (tEl) {
+        // Solo autocompletar si el usuario no editó manualmente 'tiempo'
+        const manual = tEl.dataset && tEl.dataset.manual === 'true';
+        if (!manual) tEl.value = getTiempoForDetalle(this.value);
+      }
     });
+    // Marcar cuando el usuario edita manualmente el campo 'tiempo' para evitar sobrescribirlo
+    const tiempoMainEl = document.getElementById('tiempo');
+    if (tiempoMainEl) {
+      tiempoMainEl.addEventListener('input', function(){ this.dataset.manual = 'true'; });
+    }
   }
   const detalleEdit = document.getElementById('edit-detalle');
   if (detalleEdit) {
     detalleEdit.addEventListener('input', function() {
       const tEl = document.getElementById('edit-tiempo');
-      if (tEl) tEl.value = getTiempoForDetalle(this.value);
+      if (tEl) {
+        const manual = tEl.dataset && tEl.dataset.manual === 'true';
+        if (!manual) tEl.value = getTiempoForDetalle(this.value);
+      }
     });
+    // Marcar cuando el usuario edita manualmente el campo 'edit-tiempo'
+    const tiempoEditEl = document.getElementById('edit-tiempo');
+    if (tiempoEditEl) {
+      tiempoEditEl.addEventListener('input', function(){ this.dataset.manual = 'true'; });
+    }
   }
 
   // Botón Acciones
@@ -1421,6 +1563,15 @@ window.addEventListener('load', () => {
       input.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        // Verificar extensión permitida
+        try {
+          const name = file.name || '';
+          const ext = name.split('.').pop().toLowerCase();
+          if (!['xlsx','xlsm'].includes(ext)) {
+            alert('Formato de archivo no soportado. Selecciona un archivo .xlsx o .xlsm');
+            return;
+          }
+        } catch (e) { /* ignore */ }
         const reader = new FileReader();
         reader.onload = (evt) => {
           try {
@@ -1435,14 +1586,23 @@ window.addEventListener('load', () => {
               return;
             }
 
-            // Verificar encabezados
+            // Verificar encabezados (ahora incluyendo Cant Escuelas, Cant Candidatos y Tipos de Canales)
             const expectedHeaders = [
-              "Inicio", "Estado de Inicio", "Final", "Estado Final", "Nombre", "Acciones", "Detalle de Solicitud", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión", "Nuevo o Actualizado", "Cant Documentos", "Categoría", "Analista/Área", "Nombre de Documento", "Asignado a", "Prioridad", "Actualizado", "Tiempo (cronómetro)"
+              "Inicio", "Estado de Inicio", "Final", "Estado Final", "Nombre", "Acciones", "Detalle de Solicitud", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión", "Nuevo o Actualizado", "Cant Documentos", "Categoría", "Analista/Área", "Nombre de Documento", "Asignado a", "Prioridad", "Actualizado", "Tiempo (cronómetro)", "Cant Escuelas", "Cant Candidatos", "Tipos de Canales"
             ];
-            const headers = json[0];
+            const headers = json[0] || [];
+            // Validar encabezados de forma tolerante: normalizar (sin acentos), trim y minusculas
+            function normalizeHeader(s){
+              if (!s && s !== 0) return '';
+              try{
+                return s.toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+              }catch(e){ return s.toString().toLowerCase().trim(); }
+            }
             for (let i = 0; i < expectedHeaders.length; i++) {
-              if (headers[i] !== expectedHeaders[i]) {
-                alert(`Encabezado incorrecto en columna ${String.fromCharCode(65 + i)}1: esperado "${expectedHeaders[i]}", encontrado "${headers[i]}"`);
+              const found = normalizeHeader(headers[i] || '');
+              const expected = normalizeHeader(expectedHeaders[i]);
+              if (found !== expected) {
+                alert(`Encabezado incorrecto en columna ${String.fromCharCode(65 + i)}1: esperado "${expectedHeaders[i]}", encontrado "${headers[i] || ''}"`);
                 return;
               }
             }
@@ -1450,13 +1610,27 @@ window.addEventListener('load', () => {
             // Extraer datos
             const newRows = [];
             for (let i = 1; i < json.length; i++) {
-              const row = json[i];
-              if (row.length < 20) continue; // Saltar filas incompletas
-              const newRow = row.slice(0, 20);
-              // Convertir fechas
-              newRow[0] = formatDateTime(newRow[0]); // Inicio
-              newRow[2] = formatDateTime(newRow[2]); // Final
-              newRow[18] = formatDateTime(newRow[18]); // Actualizado
+              const row = json[i] || [];
+              if (row.length < expectedHeaders.length) continue; // Saltar filas incompletas
+              const newRow = row.slice(0, expectedHeaders.length);
+              // Normalizar/convertir campos: fechas y números
+              try { newRow[0] = formatDateTime(newRow[0]); } catch(e) { newRow[0] = newRow[0] || ''; }
+              try { newRow[2] = formatDateTime(newRow[2]); } catch(e) { newRow[2] = newRow[2] || ''; }
+              try { newRow[18] = formatDateTime(newRow[18]); } catch(e) { newRow[18] = newRow[18] || ''; }
+              // Cant Escuelas (idx 20) y Cant Candidatos (idx 21): convertir a número entero si es posible
+              try {
+                const ce = String(newRow[20] || '').trim();
+                newRow[20] = ce === '' ? '' : Number(ce);
+              } catch(e) { newRow[20] = '' }
+              try {
+                const cc = String(newRow[21] || '').trim();
+                newRow[21] = cc === '' ? '' : Number(cc);
+              } catch(e) { newRow[21] = '' }
+              // Tipos de Canales (idx 22): normalizar como texto
+              try {
+                newRow[22] = (newRow[22] || '').toString().trim();
+              } catch(e) { newRow[22] = '' }
+
               newRows.push(newRow);
             }
 

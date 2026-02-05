@@ -352,7 +352,9 @@
       <option value="Reasignado">Reasignado</option>
       <option value="Finalizado">Finalizado</option>
     </select>
-  <span id="diferencia-horas" style="margin-left: 1rem; font-weight: bold; color: #0097A9;"></span>
+  <span id="diferencia-horas" style="margin-left: 1rem; font-weight: bold; color: #0097A9;">Tiempo: 00:00:00</span>
+
+  <!-- Auto-guardado por tiempo eliminado -->
   </div>
 </div>
 
@@ -519,6 +521,28 @@
         </datalist>
       </div>
 
+      <!-- Campos para Competencias: visibles solo si Categoría = "Competencias" -->
+      <div id="competencias-fields" class="competencias-grid" style="display:none;">
+        <div class="detalle-linea cant-escuelas">
+          <label for="cant-escuelas">Cant Escuelas:</label>
+          <input type="number" id="cant-escuelas" name="cant-escuelas" min="0" step="1" />
+        </div>
+        <div class="detalle-linea cant-candidatos">
+          <label for="cant-candidatos">Cant Candidatos:</label>
+          <input type="number" id="cant-candidatos" name="cant-candidatos" min="0" step="1" />
+        </div>
+        <div class="detalle-linea tipos-canales">
+          <label for="tipos-canales">Tipos de Canales:</label>
+          <input list="tipos-canales-list" id="tipos-canales" name="tipos-canales" placeholder="Selecciona…" />
+          <datalist id="tipos-canales-list">
+            <option value="Móvil">
+            <option value="Fija">
+            <option value="Ventas">
+            <option value="Formadores">
+          </datalist>
+        </div>
+      </div>
+
       <div class="detalle-linea fecha-entrega">
         <!-- Fecha de Entrega eliminada: ahora usamos fecha+hora en Inicio/Final -->
       </div>
@@ -555,7 +579,7 @@
   </p>
 
   <div class="version-box">
-    <strong>Versión:</strong> 5.1.1
+    <strong>Versión:</strong> 6.0.0
   </div>
 </div>
 
@@ -584,7 +608,7 @@
         'Inicio', 'Estado de Inicio', 'Final', 'Estado Final', 'Nombre', 'Acciones',
         'Detalle de Solicitud', 'Fallas', 'Descripción', 'Comentarios', 'Tiempo de Gestión',
         'Nuevo o Actualizado', 'Cant Documentos', 'Categoría', 'Analista/Área',
-        'Nombre de Documento', 'Asignado a', 'Prioridad', 'Tiempo (cronómetro)'
+        'Nombre de Documento', 'Asignado a', 'Prioridad', 'Tiempo (cronómetro)', 'Cant Escuelas', 'Cant Candidatos'
       ];
 
       let contenido = encabezados.join(',') + '\n';
@@ -620,17 +644,28 @@
       registrosLocal.forEach(filaOrig => {
         const fila = Array.isArray(filaOrig) ? filaOrig.slice() : [];
         const needed = encabezados.length;
-        if (fila.length < needed) {
-          while(fila.length < needed - 1) fila.push('');
-          fila.push(calcularCronoDesdeFila(fila));
-        } else if (fila.length === needed) {
-          const last = fila[fila.length - 1];
-          if(!(typeof last === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(last).trim()))) {
-            fila[fila.length - 1] = calcularCronoDesdeFila(fila);
+        const timeIndex = encabezados.indexOf('Tiempo (cronómetro)');
+
+        // Calcular/asegurar cronómetro en la columna correspondiente
+        try {
+          if (fila.length <= timeIndex) {
+            while(fila.length <= timeIndex) fila.push('');
+            fila[timeIndex] = calcularCronoDesdeFila(fila);
+          } else {
+            const cur = fila[timeIndex];
+            if(!(typeof cur === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(cur).trim()))) {
+              fila[timeIndex] = calcularCronoDesdeFila(fila);
+            }
           }
+        } catch(e) { /* ignore */ }
+
+        // Rellenar vacíos hasta el tamaño requerido
+        if (fila.length < needed) {
+          while(fila.length < needed) fila.push('');
         } else if (fila.length > needed) {
           fila.length = needed;
         }
+
         const escaped = fila.map(valor => '"' + String(valor || '').replace(/"/g, '""') + '"').join(',');
         contenido += escaped + '\n';
       });
@@ -647,6 +682,37 @@
 </script>
 <!-- Script externo -->
 <script src="codigo.js"></script>
+
+<!-- Mostrar/Ocultar campos de Competencias cuando Categoría = "Competencias" -->
+<script>
+  (function(){
+    function updateCompetenciasVisibility(){
+      const cat = document.getElementById('categoria')
+      const wrapper = document.getElementById('competencias-fields')
+      if(!cat || !wrapper) return
+      const val = (cat.value || '').trim().toLowerCase()
+      // Verificar además que el datalist contenga la opción 'Competencias'
+      const dl = document.getElementById('categorias')
+      let hasCompetenciasOption = false
+      if(dl){
+        const opts = Array.from(dl.querySelectorAll('option'))
+        hasCompetenciasOption = opts.some(o => (o.value||'').trim().toLowerCase() === 'competencias')
+      }
+      const show = hasCompetenciasOption && val === 'competencias'
+      wrapper.style.display = show ? 'grid' : 'none'
+      wrapper.setAttribute('aria-hidden', show ? 'false' : 'true')
+    }
+    document.addEventListener('DOMContentLoaded', function(){
+      const cat = document.getElementById('categoria')
+      if(cat){
+        cat.addEventListener('input', updateCompetenciasVisibility)
+        cat.addEventListener('change', updateCompetenciasVisibility)
+      }
+      updateCompetenciasVisibility()
+    })
+  })()
+</script>
+
 <!-- Replicar en SUIC Data la función de descarga tal como está en Registros.html -->
 <script>
   // Copiado desde Registros.html: descarga todo incluyendo la columna 'Actualizado' y 'Tiempo (cronómetro)'
@@ -660,7 +726,7 @@
         'Inicio', 'Estado de Inicio', 'Final', 'Estado Final', 'Nombre', 'Acciones',
         'Detalle de Solicitud', 'Fallas', 'Descripción', 'Comentarios', 'Tiempo de Gestión',
         'Nuevo o Actualizado', 'Cant Documentos', 'Categoría', 'Analista/Área',
-        'Nombre de Documento', 'Asignado a', 'Prioridad', 'Actualizado', 'Tiempo (cronómetro)'
+        'Nombre de Documento', 'Asignado a', 'Prioridad', 'Actualizado', 'Tiempo (cronómetro)', 'Cant Escuelas', 'Cant Candidatos'
       ];
 
       let contenido = encabezados.join(',') + '\n';
@@ -696,14 +762,22 @@
       registrosLocal.forEach(filaOrig => {
         const fila = Array.isArray(filaOrig) ? filaOrig.slice() : [];
         const needed = encabezados.length; // including 'Actualizado' and cronómetro
-        if (fila.length < needed) {
-          while(fila.length < needed - 1) fila.push('');
-          fila.push(calcularCronoDesdeFila(fila));
-        } else if (fila.length === needed) {
-          const last = fila[fila.length - 1];
-          if(!(typeof last === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(last).trim()))) {
-            fila[fila.length - 1] = calcularCronoDesdeFila(fila);
+        const timeIndex = encabezados.indexOf('Tiempo (cronómetro)');
+
+        try{
+          if (fila.length <= timeIndex) {
+            while(fila.length <= timeIndex) fila.push('');
+            fila[timeIndex] = calcularCronoDesdeFila(fila);
+          } else {
+            const cur = fila[timeIndex];
+            if(!(typeof cur === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(cur).trim()))) {
+              fila[timeIndex] = calcularCronoDesdeFila(fila);
+            }
           }
+        }catch(e){ }
+
+        if (fila.length < needed) {
+          while(fila.length < needed) fila.push('');
         } else if (fila.length > needed) {
           fila.length = needed;
         }

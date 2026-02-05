@@ -6,6 +6,8 @@ let _chronInterval = null;
 let _elapsedSeconds = 0; // segundos acumulados en pausas previas
 let _running = false;
 let _lastStartTs = null; // timestamp ms cuando se inició la última vez
+// Previene que el cronómetro se inicie automáticamente después de un autoguardado
+let _preventCronoAutoStart = false;
 
 function _formatHHMMSS(totalSeconds) {
   const hrs = Math.floor(totalSeconds / 3600);
@@ -24,7 +26,9 @@ function _updateChronDisplay() {
   span.textContent = `Tiempo: ${_formatHHMMSS(total)}`;
 }
 
-function _startChrono() {
+function _startChrono(force=false) {
+  // Si hay un bloqueo activo y no se solicita forzar, no iniciar automáticamente
+  if (_preventCronoAutoStart && !force) return;
   if (_running) return;
   _running = true;
   _lastStartTs = Date.now();
@@ -214,6 +218,35 @@ function _restoreDraftPrompt() {
     if (!ok) return;
     // Restaurar campos
     _applySerializedFields(draft.fields);
+
+    // Si el borrador incluía un valor para 'tiempo', marcarlo como editado manualmente
+    try {
+      const hasTiempo = draft.fields && draft.fields['tiempo'] && String(draft.fields['tiempo'].value || '').trim() !== '';
+      if (hasTiempo) {
+        const tEl = document.getElementById('tiempo');
+        if (tEl) tEl.dataset.manual = 'true';
+      }
+    } catch (e) { /* ignore */ }
+
+    // Si el borrador contenía valores para 'Cant Escuelas' o 'Cant Candidatos',
+    // mostrar explícitamente el wrapper de 'Competencias' para que los campos sean visibles
+    // incluso si el selector de categoría no los estaría mostrando por sí solo.
+    try {
+      const hasCe = draft.fields && draft.fields['cant-escuelas'] && String(draft.fields['cant-escuelas'].value || '').trim() !== '';
+      const hasCc = draft.fields && draft.fields['cant-candidatos'] && String(draft.fields['cant-candidatos'].value || '').trim() !== '';
+      const tcField = draft.fields && draft.fields['tipos-canales'];
+      const hasTc = tcField && ((tcField.type === 'input' && String(tcField.value || '').trim() !== '') || (tcField.type === 'select' && typeof tcField.selectedIndex === 'number' && tcField.selectedIndex > 0));
+      const wrapper = document.getElementById('competencias-fields');
+      const cat = document.getElementById('categoria');
+      // Primero, disparar evento 'input' en categoría para aplicar la lógica normal de visibilidad
+      if (cat) cat.dispatchEvent(new Event('input', { bubbles: true }));
+      // Si el borrador tiene datos en los campos de competencias, forzar visibilidad del wrapper
+      if ((hasCe || hasCc || hasTc) && wrapper && wrapper.style.display === 'none') {
+        wrapper.style.display = 'grid';
+        wrapper.setAttribute('aria-hidden', 'false');
+      }
+    } catch (e) { /* ignore */ }
+
     // Restaurar cronómetro
     try {
       if (draft.chrono) {
@@ -249,6 +282,10 @@ try {
 // Inicializar pantalla
 document.addEventListener('DOMContentLoaded', _updateChronDisplay);
 
+/* Auto-guardado por tiempo eliminado por petición del usuario. */
+try{ localStorage.removeItem('suic_autosave_settings'); }catch(e){}
+
+
 // Permitir que re-seleccionar la misma opción en los selects 'inicio'/'final' ejecute la lógica
 document.addEventListener('DOMContentLoaded', () => {
   try {
@@ -282,33 +319,85 @@ setInterval(() => {
   localStorage.setItem("registros", JSON.stringify(registros));
 }, 300000); // Guarda cada 5 minutos
 
-function guardarFormulario() {
+function guardarFormulario(isAuto=false) {
   const campos = [
     "hora-inicio", "inicio", "hora-final", "final", "nombre", "acciones", "detalle",
     "fallas", "descripcion", "comentarios", "tiempo", "actualizado", "documentos",
     "categoria", "analista", "documento", "asignado", "prioridad"
   ];
+
+  // Helper: validar campos requeridos reutilizable
+  function _validateRequiredFields() {
+    const opcionales = ["fallas", "descripcion", "comentarios"];
+    let faltantes = [];
+    campos.forEach(id => {
+      if (opcionales.includes(id)) return;
+      const el = document.getElementById(id);
+      let valor = "";
+      if (!el) return faltantes.push(id);
+      if (el.tagName === "SELECT") {
+        valor = el.options[el.selectedIndex]?.value || "";
+      } else {
+        valor = el.value || "";
+      }
+      if (!valor) faltantes.push(id);
+    });
+
+    // Validación adicional: si Categoría = Competencias y los campos aparecen, exigir Cant Escuelas/Cant Candidatos
+    try {
+      const cat = document.getElementById('categoria');
+      const wrapper = document.getElementById('competencias-fields');
+      const isVisible = wrapper && window.getComputedStyle(wrapper).display !== 'none';
+      const catVal = (cat && (cat.value || '').trim().toLowerCase()) || '';
+      if (catVal === 'competencias' && isVisible) {
+        const ce = document.getElementById('cant-escuelas');
+        const cc = document.getElementById('cant-candidatos');
+        const tc = document.getElementById('tipos-canales');
+        const ceEmpty = !ce || String(ce.value || '').trim() === '';
+        const ccEmpty = !cc || String(cc.value || '').trim() === '';
+        const tcEmpty = !tc || String(tc.value || '').trim() === '';
+        if (ceEmpty) faltantes.push('cant-escuelas');
+        if (ccEmpty) faltantes.push('cant-candidatos');
+        if (tcEmpty) faltantes.push('tipos-canales');
+      }
+    } catch (e) { /* ignore */ }
+
+    return { ok: faltantes.length === 0, missing: faltantes };
+  }
+
   const opcionales = ["fallas", "descripcion", "comentarios"];
 
   // Validar que todos los campos requeridos estén llenos
-  let faltantes = [];
-  campos.forEach(id => {
-    if (opcionales.includes(id)) return; // omitir validación si es opcional
-    const el = document.getElementById(id);
-    let valor = "";
-    if (!el) return faltantes.push(id);
-    if (el.tagName === "SELECT") {
-      valor = el.options[el.selectedIndex]?.value || "";
-    } else {
-      valor = el.value || "";
+  const validation = _validateRequiredFields();
+  if (!validation.ok) {
+    if (isAuto) {
+      // En caso de auto-guardado fallido, pausar cronómetro y notificar
+      try { _pauseChrono(); } catch (e) {}
+      alert('No se puede autoguardar: faltan campos obligatorios. Por favor completa todos los campos antes de intentar el guardado automático.');
+      return;
     }
-    if (!valor) faltantes.push(id);
-  });
-
-  if (faltantes.length > 0) {
     alert("Debes rellenar todos los datos obligatorios antes de guardar.");
     return;
   }
+
+  // Si la categoría es 'Competencias' y los campos de Competencias están visibles,
+  // exigir que Cant Escuelas y Cant Candidatos no estén vacíos.
+  try {
+    const cat = document.getElementById('categoria');
+    const wrapper = document.getElementById('competencias-fields');
+    const isVisible = wrapper && window.getComputedStyle(wrapper).display !== 'none';
+    const catVal = (cat && (cat.value || '').trim().toLowerCase()) || '';
+    if (catVal === 'competencias' && isVisible) {
+      const ce = document.getElementById('cant-escuelas');
+      const cc = document.getElementById('cant-candidatos');
+      const ceEmpty = !ce || String(ce.value || '').trim() === '';
+      const ccEmpty = !cc || String(cc.value || '').trim() === '';
+      if (ceEmpty || ccEmpty) {
+        alert("Para la categoría 'Competencias' debes completar 'Cant Escuelas' y 'Cant Candidatos' antes de guardar.");
+        return;
+      }
+    }
+  } catch (e) { /* ignore */ }
 
   // Si todo está bien, guardar
   const registro = campos.map(id => {
@@ -320,6 +409,8 @@ function guardarFormulario() {
     return el.value || "";
   });
 
+  /* Auto-guardado por tiempo eliminado: no se aplican estados automáticos. */
+
   // Añadir al final el valor actual del cronómetro en formato HH:MM:SS
   try {
     let total = _elapsedSeconds || 0;
@@ -330,9 +421,21 @@ function guardarFormulario() {
     // Reservar columna 'Actualizado' (vacía en creación) y luego añadir cronómetro
     registro.push('');
     registro.push(cronometroStr);
+    // Añadir al final Cant Escuelas, Cant Candidatos y Tipos de Canales (guardar si existen o vacío si no)
+    try{
+      const ce = document.getElementById('cant-escuelas');
+      const cc = document.getElementById('cant-candidatos');
+      const tc = document.getElementById('tipos-canales');
+      const valCe = ce && ce.value !== '' ? Number(ce.value) : '';
+      const valCc = cc && cc.value !== '' ? Number(cc.value) : '';
+      const valTc = tc && tc.value ? tc.value : '';
+      registro.push(valCe);
+      registro.push(valCc);
+      registro.push(valTc);
+    }catch(e){ registro.push(''); registro.push(''); registro.push(''); }
   } catch (e) {
     // Si algo falla, no impedir el guardado
-    registro.push(''); registro.push('');
+    registro.push(''); registro.push(''); registro.push(''); registro.push('');
   }
 
   registros.push(registro);
@@ -345,7 +448,12 @@ function guardarFormulario() {
 
   // Resetear formulario y cronómetro al guardar para evitar inconsistencias
   borrarDatos();
-  _resetChrono();
+  try {
+    // En caso de auto-guardado queremos reiniciar el cronómetro a 00:00:00 y dejarlo detenido
+    // para comenzar una nueva tipificación limpia.
+    _resetChrono();
+  } catch (e) { /* ignore */ }
+
   // Autocompletar valores por defecto después de guardar
   document.getElementById("tiempo").value = "En Línea (1 - 10 minutos)";
   document.getElementById("actualizado").value = "Nuevo";
@@ -355,7 +463,7 @@ function guardarFormulario() {
   var mm = String(hoy.getMonth() + 1).padStart(2, '0');
   var dd = String(hoy.getDate()).padStart(2, '0');
   // Campo Fecha de Entrega eliminado: ya no se asigna aquí.
-  alert("Formulario guardado. Puedes llenar otro.");
+  if (!isAuto) alert("Formulario guardado. Puedes llenar otro.");
 }
 
 function descargarTodoCSV() {
@@ -367,7 +475,7 @@ function descargarTodoCSV() {
     "Inicio", "Estado de Inicio", "Final", "Estado Final", "Nombre", "Acciones",
     "Detalle de Solicitud", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión",
     "Nuevo o Actualizado", "Cant Documentos", "Categoría", "Analista/Área",
-    "Nombre de Documento", "Asignado a", "Prioridad", "Tiempo (cronómetro)"
+    "Nombre de Documento", "Asignado a", "Prioridad", "Tiempo (cronómetro)", "Cant Escuelas", "Cant Candidatos", "Tipos de Canales"
   ];
 
   let contenido = encabezados.join(",") + "\n";
@@ -402,15 +510,23 @@ function descargarTodoCSV() {
 
   registros.forEach(filaOrig => {
     const fila = Array.isArray(filaOrig) ? filaOrig.slice() : [];
-    const needed = encabezados.length; // 19
-    if (fila.length < needed) {
-      while(fila.length < needed - 1) fila.push('');
-      fila.push(calcularCronoDesdeFila(fila));
-    } else if (fila.length === needed) {
-      const last = fila[fila.length - 1];
-      if(!(typeof last === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(last).trim()))) {
-        fila[fila.length - 1] = calcularCronoDesdeFila(fila);
+    const needed = encabezados.length;
+    const timeIndex = encabezados.indexOf('Tiempo (cronómetro)');
+
+    try{
+      if (fila.length <= timeIndex) {
+        while(fila.length <= timeIndex) fila.push('');
+        fila[timeIndex] = calcularCronoDesdeFila(fila);
+      } else {
+        const cur = fila[timeIndex];
+        if(!(typeof cur === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(cur).trim()))) {
+          fila[timeIndex] = calcularCronoDesdeFila(fila);
+        }
       }
+    }catch(e){ }
+
+    if (fila.length < needed) {
+      while(fila.length < needed) fila.push('');
     } else if (fila.length > needed) {
       fila.length = needed;
     }
@@ -446,7 +562,14 @@ function colocarHora(tipo) {
       // solo setear hora-inicio si está vacío, mantener la primera marca
       const hi = document.getElementById('hora-inicio');
       if (hi && !hi.value) hi.value = formato;
-      _startChrono();
+      // Solo iniciar el cronómetro si la acción proviene del usuario (select tiene el foco).
+      const sel = document.getElementById('inicio');
+      const isUserAction = (document.activeElement === sel);
+      if (isUserAction) {
+        // Permitir inicio por acción de usuario
+        _preventCronoAutoStart = false;
+        _startChrono(true);
+      }
     } else {
       // cualquier otra selección en inicio no detiene por sí sola el cronómetro
     }
@@ -456,7 +579,13 @@ function colocarHora(tipo) {
   if (tipo === 'final') {
     if (['Continuar', 'En proceso'].includes(valor)) {
       // Continuar/seguir: iniciar o continuar cronómetro
-      _startChrono();
+      // Solo iniciar si el cambio es una interacción del usuario (select con foco)
+      const sel = document.getElementById('final');
+      const isUserAction = (document.activeElement === sel);
+      if (isUserAction) {
+        _preventCronoAutoStart = false;
+        _startChrono(true);
+      }
     }
 
     if (['En pausa', 'Reasignado', 'Finalizado'].includes(valor)) {
@@ -476,7 +605,7 @@ function descargarDatos() {
     "Inicio", "Estado de Inicio", "Final", "Estado Final", "Nombre", "Acciones",
     "Detalle de Solicitud", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión",
     "Nuevo o Actualizado", "Cant Documentos", "Categoría", "Analista/Área",
-    "Nombre de Documento", "Asignado a", "Prioridad", "Tiempo (cronómetro)"
+    "Nombre de Documento", "Asignado a", "Prioridad", "Tiempo (cronómetro)", "Cant Escuelas", "Cant Candidatos", "Tipos de Canales"
   ];
 
   // IDs correspondientes en el formulario (en el mismo orden, excepto la última columna que se calcula)
@@ -511,6 +640,16 @@ function descargarDatos() {
 
   valores.push(escapeCSV(cronometroStr));
 
+  // Incluir Cant Escuelas y Cant Candidatos si existen (sino dejar vacío)
+  try{
+    const ce = document.getElementById('cant-escuelas');
+    const cc = document.getElementById('cant-candidatos');
+    const tc = document.getElementById('tipos-canales');
+    valores.push(escapeCSV(ce && ce.value !== undefined && ce.value !== null ? ce.value : ''));
+    valores.push(escapeCSV(cc && cc.value !== undefined && cc.value !== null ? cc.value : ''));
+    valores.push(escapeCSV(tc && tc.value !== undefined && tc.value !== null ? tc.value : ''));
+  }catch(e){ valores.push(escapeCSV('')); valores.push(escapeCSV('')); valores.push(escapeCSV('')); }
+
   const encabezadosCSV = encabezados.map(h => escapeCSV(h)).join(',');
   const contenidoCSV = encabezadosCSV + '\n' + valores.join(',');
 
@@ -538,6 +677,33 @@ function borrarDatos() {
   });
   // Asegurar que el cronómetro se muestra en 00:00:00 al limpiar campos
   try { _resetChrono(); } catch (e) { /* ignore */ }
+
+  // Forzar actualización de visibilidad de campos 'Competencias' (si existe handler)
+  try{
+    // Forzar actualización de visibilidad en el formulario principal
+    const cat = document.getElementById('categoria');
+    if(cat) cat.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Limpiar inputs del formulario principal si existen
+    const ce = document.getElementById('cant-escuelas');
+    const cc = document.getElementById('cant-candidatos');
+    const tc = document.getElementById('tipos-canales');
+    if(ce) ce.value = '';
+    if(cc) cc.value = '';
+    if(tc) tc.value = '';
+
+    // Además limpiar los campos del modal de edición en caso de que esté abierto
+    const ceEdit = document.getElementById('edit-cant-escuelas');
+    const ccEdit = document.getElementById('edit-cant-candidatos');
+    const tcEdit = document.getElementById('edit-tipos-canales');
+    if(ceEdit) ceEdit.value = '';
+    if(ccEdit) ccEdit.value = '';
+    if(tcEdit) tcEdit.value = '';
+
+    // Forzar actualización de visibilidad en el modal (si existe)
+    const editCat = document.getElementById('edit-categoria');
+    if(editCat) editCat.dispatchEvent(new Event('input', { bubbles: true }));
+  }catch(e){}
 }
 
 window.addEventListener("load", () => {
@@ -553,14 +719,16 @@ window.addEventListener("load", () => {
 
 function borrarHistorial() {
   if (confirm("¿Estás seguro de borrar todos los formularios guardados? Esta acción no se puede deshacer.")) {
+    // Solo eliminamos los registros guardados; no tocar el formulario actual ni el cronómetro
     registros = [];
     localStorage.removeItem("registros");
     document.getElementById("contador-formularios").textContent = "🗂️ 0 Registros";
-    alert("Historial eliminado con éxito.");
-    // Resetear cronómetro cuando se borra todo el historial
-    try { _resetChrono(); } catch (e) { /* ignore */ }
-    // Borrar borrador también
-    try { _clearDraft(); } catch (e) { /* ignore */ }
+    alert("Historial eliminado con éxito. El formulario actual no fue modificado.");
+
+    // No resetear el cronómetro ni borrar borradores para preservar la tipificación en curso
+
+    // Emitir evento para que otras vistas (p. ej. Registros.html) puedan actualizarse si están abiertas
+    try { window.dispatchEvent(new Event('registros:cleared')); } catch (e) { /* ignore */ }
   }
 }
 
