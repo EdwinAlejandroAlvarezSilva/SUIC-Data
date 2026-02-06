@@ -327,6 +327,8 @@ function guardarFormulario(isAuto=false) {
   ];
 
   // Helper: validar campos requeridos reutilizable
+    // Intentar autocomentar antes de validar (función global definida fuera)
+    try { if (typeof _autoCommentForCompetencias === 'function') _autoCommentForCompetencias(); } catch (e) { /* ignore */ }
   function _validateRequiredFields() {
     const opcionales = ["fallas", "descripcion", "comentarios"];
     let faltantes = [];
@@ -715,6 +717,126 @@ window.addEventListener("load", () => {
   }
   // Intentar restaurar borrador (si existe)
   try { _restoreDraftPrompt(); } catch (e) { /* ignore */ }
+});
+
+// --- Detección global de palabras clave para comentarios (Competencias) ---
+// Normaliza texto (quita diacríticos y pasa a minúsculas)
+function _normalizeText(s) {
+  try {
+    return String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  } catch (e) { return String(s || '').toLowerCase(); }
+}
+
+function _escapeRegExp(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+// Devuelve array de etiquetas encontradas (coincidencia por palabra exacta)
+function _detectKeywordsFromText(text) {
+  try {
+    const normalized = _normalizeText(text);
+    const map = {
+      'a365': 'A365',
+      'concentrix': 'Concentrix',
+      'fortel': 'Fortel',
+      'gea': 'GEA',
+      'mdy': 'MDY',
+      'partner': 'Partner',
+      'atento peru': 'Atento Perú',
+      'bpo peru': 'BPO Perú',
+      'grupo recupera': 'Grupo Recupera'
+    };
+    const found = [];
+    Object.keys(map).forEach(key => {
+      const k = _normalizeText(key);
+      // usar límites de palabra; para multi-palabra también funciona
+      const re = new RegExp('\\b' + _escapeRegExp(k) + '\\b', 'i');
+      if (re.test(normalized)) {
+        const v = map[key]; if (!found.includes(v)) found.push(v);
+      }
+    });
+    return found;
+  } catch (e) { return []; }
+}
+
+function _getStoredDetectedKeywords() {
+  try { return JSON.parse(document.body.dataset.detectedKeywords || '[]'); } catch (e) { return []; }
+}
+
+function _storeDetectedKeywords(keys) {
+  try { document.body.dataset.detectedKeywords = JSON.stringify(Array.from(new Set(keys || []))); } catch (e) { /* ignore */ }
+}
+
+function _applyKeywordsToComments(keys) {
+  try {
+    if (!Array.isArray(keys) || keys.length === 0) return;
+    const comentariosEl = document.getElementById('comentarios');
+    if (!comentariosEl) return;
+    const actual = (comentariosEl.value || '').split(';').map(s => s.trim()).filter(Boolean);
+    keys.forEach(k => { if (!actual.includes(k)) actual.push(k); });
+    comentariosEl.value = actual.join('; ');
+  } catch (e) { /* ignore */ }
+}
+
+// Función pública: detecta y aplica/almacena según la categoría actual.
+function _getAllKeywordLabels(){
+  return ['A365','Concentrix','Fortel','GEA','MDY','Partner','Atento Perú','BPO Perú','Grupo Recupera'];
+}
+
+function _autoCommentForCompetencias() {
+  try {
+    const nombreEl = document.getElementById('nombre');
+    const docEl = document.getElementById('documento');
+    const cat = document.getElementById('categoria');
+    const texto = ((nombreEl && nombreEl.value) || '') + ' ' + ((docEl && docEl.value) || '');
+    const encontrados = _detectKeywordsFromText(texto);
+
+    // Guardar sólo los detectados actualmente (no hacer merge permanente)
+    _storeDetectedKeywords(encontrados);
+
+    // Si la categoría actual es Competencias, actualizar el campo comentarios
+    const catVal = (cat && (cat.value || '').trim().toLowerCase()) || '';
+    if (catVal === 'competencias') {
+      const comentariosEl = document.getElementById('comentarios');
+      if (!comentariosEl) return;
+      const actual = (comentariosEl.value || '').split(';').map(s => s.trim()).filter(Boolean);
+
+      // Separar comentarios manuales (los que no estén en la lista de etiquetas)
+      const labels = _getAllKeywordLabels();
+      const manual = actual.filter(c => !labels.includes(c));
+
+      // Unir manuales + detectados actuales (evitar duplicados)
+      const merged = manual.slice();
+      encontrados.forEach(k => { if (!merged.includes(k)) merged.push(k); });
+
+      comentariosEl.value = merged.join('; ');
+    }
+  } catch (e) { /* ignore */ }
+}
+
+// Listeners: detectar en tiempo real y aplicar cuando se active la categoría
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    const nombre = document.getElementById('nombre');
+    const doc = document.getElementById('documento');
+    const cat = document.getElementById('categoria');
+    const events = ['input','change','keyup','compositionend'];
+    const attach = (el)=>{
+      if(!el) return;
+      events.forEach(ev=>el.addEventListener(ev, _autoCommentForCompetencias));
+      // paste/cut: esperar al próximo ciclo para leer el valor actualizado
+      el.addEventListener('paste', ()=> setTimeout(_autoCommentForCompetencias, 0));
+      el.addEventListener('cut', ()=> setTimeout(_autoCommentForCompetencias, 0));
+    };
+    attach(nombre); attach(doc);
+    if (cat) cat.addEventListener('input', () => {
+      try {
+        const catVal = (cat.value || '').trim().toLowerCase();
+        if (catVal === 'competencias') {
+          const keys = _getStoredDetectedKeywords();
+          _applyKeywordsToComments(keys);
+        }
+      } catch (e) { /* ignore */ }
+    });
+  } catch (e) { /* ignore */ }
 });
 
 function borrarHistorial() {

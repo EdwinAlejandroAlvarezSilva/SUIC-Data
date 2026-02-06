@@ -192,7 +192,7 @@ body.registros-page.dark-theme #btn-descargar-todo { background: linear-gradient
 
 /* Buscador y select */
 #buscador-texto { flex: 1 1 auto; min-width: 0; padding:0.5rem; border-radius:6px; border:1px solid #000000; background: #f0f4ff; color:#000000; }
-body.registros-page.dark-theme #buscador-texto { background:#ffffff; color:#ffffff; border:1px solid rgba(255, 255, 255, 0.04); }
+body.registros-page.dark-theme #buscador-texto { background:#ffffff; color:#000000; border:1px solid rgba(255, 255, 255, 0.04); }
 #buscador-columna { padding:0.45rem; border-radius:6px; border:1px solid #000000; background: #f0f4ff; color:#000000; }
 body.registros-page.dark-theme #buscador-columna { background:#ffffff; color:#000000; border:1px solid rgba(0, 0, 0, 0.04); }
 #buscador-fecha { padding:0.5rem; border-radius:6px; border:1px solid #32587e; background: #32587e; color:#fdfdfd; }
@@ -1215,4 +1215,17 @@ body.registros-page.dark-theme .registros-table tbody td {
 }
 body.registros-page.dark-theme .registros-table tbody tr:hover {
   background: rgba(128,128,128,0.06); /* gris transparente */
+}
+/* Estilos para icono de filtro activo */
+/* Modo claro */
+.registros-table thead th .filter-icon.active svg {
+  stroke: #007bff !important;
+  color: #007bff !important;
+  fill: currentColor !important;
+}
+/* Modo oscuro */
+body.registros-page.dark-theme .registros-table thead th .filter-icon.active svg {
+  stroke: #4dabf7 !important;
+  color: #4dabf7 !important;
+  fill: currentColor !important;
 }

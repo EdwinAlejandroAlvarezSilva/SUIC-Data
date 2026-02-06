@@ -5,6 +5,11 @@ function formatCell(value) {
   return String(value);
 }
 
+// Persistencia de estado de filtros por encabezado (se mantiene entre re-renders)
+// Estructura: { "Inicio": ["valor1","valor2"], "Estado de Inicio": [...] }
+let persistentFiltersMap = {};
+let persistentFilterSearch = {};
+
 // Mapeo de opciones por categoría (replicado desde codigo.js para comportamiento consistente)
 const opcionesPorCategoria = {
     "Accesos al Portal": ["Asignar rol y organización"],
@@ -65,6 +70,48 @@ function actualizarDetalleDatalist(valorCategoria, datalistId = 'detalles') {
 
 }
 
+// --- Detección de keywords para modal de edición (similar a codigo.js) ---
+function _normalizeText(s) {
+  try { return String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase(); } catch (e) { return String(s || '').toLowerCase(); }
+}
+function _escapeRegExp(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function _detectKeywordsFromTextModal(text) {
+  try {
+    const normalized = _normalizeText(text);
+    const map = {
+      'a365': 'A365',
+      'concentrix': 'Concentrix',
+      'fortel': 'Fortel',
+      'gea': 'GEA',
+      'mdy': 'MDY',
+      'partner': 'Partner',
+      'atento peru': 'Atento Perú',
+      'bpo peru': 'BPO Perú',
+      'grupo recupera': 'Grupo Recupera'
+    };
+    const found = [];
+    Object.keys(map).forEach(key => {
+      const k = _normalizeText(key);
+      const re = new RegExp('\\b' + _escapeRegExp(k) + '\\b', 'i');
+      if (re.test(normalized)) { const v = map[key]; if (!found.includes(v)) found.push(v); }
+    });
+    return found;
+  } catch (e) { return []; }
+}
+function _getAllKeywordLabelsModal(){ return ['A365','Concentrix','Fortel','GEA','MDY','Partner','Atento Perú','BPO Perú','Grupo Recupera']; }
+function _applyKeywordsToEditComments(keys) {
+  try {
+    const comentariosEl = document.getElementById('edit-comentarios');
+    if (!comentariosEl) return;
+    const actual = (comentariosEl.value || '').split(';').map(s=>s.trim()).filter(Boolean);
+    const labels = _getAllKeywordLabelsModal();
+    const manual = actual.filter(c => !labels.includes(c));
+    const merged = manual.slice();
+    keys.forEach(k => { if (!merged.includes(k)) merged.push(k); });
+    comentariosEl.value = merged.join('; ');
+  } catch (e) { /* ignore */ }
+}
+
 // Mapeo detalle -> tiempo (valores mostrados en el input #tiempo / #edit-tiempo)
 const detalleToTiempo = {
   'En Línea (1 - 10 minutos)': 'En Línea (1 - 10 minutos)',
@@ -93,24 +140,142 @@ function getTiempoForDetalle(detalle) {
 // Función para formatear fechas al formato hh:mm:ss dd/mm/yyyy
 function formatDateTime(value) {
   if (!value) return '';
-  let date;
+  // Manejo de números (serial de Excel): convertir usando UTC para evitar desplazamientos por zona horaria
   if (typeof value === 'number') {
-    // Excel serial date (días desde 1900-01-01)
-    date = new Date((value - 25569) * 86400 * 1000);
-  } else if (typeof value === 'string') {
-    // Intentar parsear como fecha
-    date = new Date(value);
-  } else {
-    return value; // Si no es número ni string, devolver como está
+    try {
+      const serial = Number(value);
+      const ms = Math.round((serial - 25569) * 86400 * 1000);
+      const d = new Date(ms);
+      const dd = String(d.getUTCDate()).padStart(2, '0');
+      const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const yyyy = d.getUTCFullYear();
+      const hh = String(d.getUTCHours()).padStart(2, '0');
+      const min = String(d.getUTCMinutes()).padStart(2, '0');
+      const ss = String(d.getUTCSeconds()).padStart(2, '0');
+      return `${hh}:${min}:${ss} ${dd}/${mm}/${yyyy}`;
+    } catch (e) { return '' }
   }
-  if (isNaN(date.getTime())) return value; // Si no es fecha válida, devolver original
-  const dd = String(date.getDate()).padStart(2, '0');
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const yyyy = date.getFullYear();
-  const hh = String(date.getHours()).padStart(2, '0');
-  const min = String(date.getMinutes()).padStart(2, '0');
-  const ss = String(date.getSeconds()).padStart(2, '0');
-  return `${hh}:${min}:${ss} ${dd}/${mm}/${yyyy}`;
+
+  // Manejo de objetos Date (por ejemplo si se leyó con cellDates:true)
+  if (value instanceof Date) {
+    const d = value;
+    if (isNaN(d.getTime())) return '';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    return `${hh}:${min}:${ss} ${dd}/${mm}/${yyyy}`;
+  }
+
+  // Manejo de strings: intentar parseo sin causar shifts de zona
+  if (typeof value === 'string') {
+    const s = value.trim();
+    // Si ya viene en formato 'HH:MM:SS DD/MM/YYYY'
+    const fullMatch = s.match(/^(\d{1,2}):(\d{2}):(\d{2})\s+(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (fullMatch) {
+      const hh = String(fullMatch[1]).padStart(2, '0');
+      const min = fullMatch[2];
+      const ss = fullMatch[3];
+      const dd = String(fullMatch[4]).padStart(2, '0');
+      const mm = String(fullMatch[5]).padStart(2, '0');
+      const yyyy = fullMatch[6].length === 2 ? '20' + fullMatch[6] : fullMatch[6];
+      return `${hh}:${min}:${ss} ${dd}/${mm}/${yyyy}`;
+    }
+
+    // Si sólo trae tiempo 'HH:MM:SS', conservarlo y anexar la fecha actual
+    const timeOnly = s.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+    if (timeOnly) {
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const hh = String(timeOnly[1]).padStart(2, '0');
+      return `${hh}:${timeOnly[2]}:${timeOnly[3]} ${dd}/${mm}/${yyyy}`;
+    }
+
+    // Intentar parsear como fecha; si es válida, obtener componentes locales (pero preferimos UTC para números)
+    const parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) {
+      const dd = String(parsed.getDate()).padStart(2, '0');
+      const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+      const yyyy = parsed.getFullYear();
+      const hh = String(parsed.getHours()).padStart(2, '0');
+      const min = String(parsed.getMinutes()).padStart(2, '0');
+      const ss = String(parsed.getSeconds()).padStart(2, '0');
+      return `${hh}:${min}:${ss} ${dd}/${mm}/${yyyy}`;
+    }
+
+    // Si no se pudo interpretar, devolver el valor original (trimmed)
+    return s;
+  }
+
+  // Si no es número ni string, devolver tal cual
+  return value;
+}
+
+// Función para formatear solo tiempo (HH:MM:SS)
+function formatTime(value) {
+  if (!value) return '';
+  const str = String(value).trim();
+  // Si ya está en formato HH:MM:SS, devolverlo
+  if (/^\d{1,2}:\d{2}:\d{2}$/.test(str)) return str;
+
+  // Si es número (serial Excel) usar UTC para evitar shifts
+  if (typeof value === 'number') {
+    try {
+      // Tratar el número como duración en días (Excel): convertir a segundos totales
+      const serial = Number(value);
+      const totalSeconds = Math.round(serial * 86400);
+      const hours = Math.floor(totalSeconds / 3600);
+      const mins = Math.floor((totalSeconds % 3600) / 60);
+      const secs = totalSeconds % 60;
+      return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    } catch (e) { return '' }
+  }
+  // Manejo de objetos Date (si se leyó con cellDates:true)
+  if (value instanceof Date) {
+    const d = value;
+    if (isNaN(d.getTime())) return '';
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  // Intentar parsear como fecha y extraer hora
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    const hh = String(parsed.getHours()).padStart(2, '0');
+    const mm = String(parsed.getMinutes()).padStart(2, '0');
+    const ss = String(parsed.getSeconds()).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  // Devolver original si no se puede interpretar
+  return str;
+}
+
+// Función para convertir a número (preservando vacío como string vacío)
+function formatNumber(value) {
+  if (value === '' || value === null || value === undefined) return '';
+  const num = Number(value);
+  return isNaN(num) ? '' : num;
+}
+
+// Función para convertir a texto general (preservando saltos de línea)
+function formatText(value) {
+  if (value === '' || value === null || value === undefined) return '';
+  return String(value).trim();
+}
+
+// Función para convertir a texto general preservando saltos de línea internos
+function formatTextWithLineBreaks(value) {
+  if (value === '' || value === null || value === undefined) return '';
+  const str = String(value);
+  // Preservar saltos de línea internos, solo eliminar espacios/nuevas líneas al inicio y final
+  return str.trim();
 }
 
 // Variables para la columna de selección
@@ -128,11 +293,11 @@ function crearTabla(registros, storedIndices) {
 
   // Encabezados (coinciden con el orden que guarda codigo.js)
   const encabezados = [
-    "Inicio", "Estado Inicio", "Final", "Estado Final", "Nombre", "Acciones",
-    "Detalle", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión",
-    "Nuevo/Actualizado", "Cant Documentos", "Categoría", "Analista/Área",
-    "Nombre Documento", "Asignado a", "Prioridad",
-    "Actualizado", "Tiempo", "Cant Escuelas", "Cant Candidatos", "Tipos de Canales"
+    "Inicio", "Estado de Inicio", "Final", "Estado Final", "Nombre", "Acciones",
+    "Detalle de Solicitud", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión",
+    "Nuevo o Actualizado", "Cant Documentos", "Categoría", "Analista/Área",
+    "Nombre de Documento", "Asignado a", "Prioridad",
+    "Actualizado", "Tiempo (cronómetro)", "Cant Escuelas", "Cant Candidatos", "Tipos de Canales"
   ];
 
   const table = document.createElement('table');
@@ -146,7 +311,7 @@ function crearTabla(registros, storedIndices) {
       const cells = row.querySelectorAll('td');
       filters.forEach((filterObj, idx) => {
         if (!filterObj || filterObj.values.size === 0) return;
-        const cell = cells[idx + (showSelectionColumn ? 1 : 0)]; // offset por selección
+        const cell = cells[idx];
         if (!cell) return;
         const cellText = cell.textContent || '';
         if (!filterObj.values.has(cellText)) show = false;
@@ -163,12 +328,12 @@ function crearTabla(registros, storedIndices) {
       if (!filterObj) return;
       const unique = new Set();
       const h = headers[idx];
-      // Agregar opciones de filas visibles
-      Array.from(rows).filter(row => row.style.display === '').forEach(row => {
+      // Agregar opciones a partir de TODAS las filas (no solo las visibles)
+      Array.from(rows).forEach(row => {
         const cells = row.querySelectorAll('td');
-        const cell = cells[idx + (showSelectionColumn ? 1 : 0)];
+        const cell = cells[idx];
         if (cell) {
-          const val = cell.textContent.trim();
+          const val = (cell.textContent || '').trim();
           if (val) unique.add(val);
         }
       });
@@ -176,6 +341,8 @@ function crearTabla(registros, storedIndices) {
       filterObj.unique = unique;
       // Actualizar checkboxes
       updateCheckboxes(filterObj);
+      // Asegurar que el icono de filtro se actualice para reflejar estado activo
+      updateIcon(filterObj.th, filterObj);
     });
   }
 
@@ -203,9 +370,9 @@ function crearTabla(registros, storedIndices) {
 
   // Opciones para filtros select fijos
   const filterOptions = {
-    "Estado Inicio": ["En proceso"],
+    "Estado de Inicio": ["En proceso"],
     "Estado Final": ["Continuar"],
-    "Nuevo/Actualizado": ["Nuevo", "Actualizado"],
+    "Nuevo o Actualizado": ["Nuevo", "Actualizado"],
     "Prioridad": ["Highest", "High", "Medium"]
   };
 
@@ -249,6 +416,8 @@ function crearTabla(registros, storedIndices) {
           } else {
             filterObj.values.delete(val);
           }
+          // Persistir selección del filtro por encabezado
+          try { persistentFiltersMap[filterObj.headerName] = Array.from(filterObj.values); } catch(e){}
           applyFilters();
           updateIcon(filterObj.th, filterObj);
         });
@@ -293,10 +462,18 @@ function crearTabla(registros, storedIndices) {
     searchInput.style.boxSizing = 'border-box';
     filterEl.appendChild(searchInput);
     th.appendChild(filterEl);
-    const filterObj = { el: filterEl, values: new Set(), th: th, searchTerm: '' };
+    // Recuperar valores persistidos si existen
+    const persistedVals = persistentFiltersMap[h] ? new Set(persistentFiltersMap[h]) : new Set();
+    const persistedSearch = persistentFilterSearch[h] || '';
+    const filterObj = { el: filterEl, values: persistedVals, th: th, searchTerm: persistedSearch, headerName: h };
+    // Inicializar el input de búsqueda con el valor persistido
+    searchInput.value = persistedSearch;
+    // Aplicar icono activo si hay filtros persistidos
+    updateIcon(th, filterObj);
     // Event listener para el input de búsqueda
     searchInput.addEventListener('input', () => {
       filterObj.searchTerm = searchInput.value.toLowerCase();
+      persistentFilterSearch[h] = filterObj.searchTerm;
       updateCheckboxes(filterObj);
     });
     filters[colIdx + (showSelectionColumn ? 1 : 0)] = filterObj;
@@ -306,6 +483,7 @@ function crearTabla(registros, storedIndices) {
     icon.addEventListener('click', (e) => {
       e.stopPropagation();
       filterObj.values.clear();
+      try { persistentFiltersMap[h] = []; persistentFilterSearch[h] = ''; } catch(e){}
       applyFilters();
       updateIcon(filterObj.th, filterObj);
     });
@@ -316,6 +494,8 @@ function crearTabla(registros, storedIndices) {
       document.querySelectorAll('.filter-dropdown').forEach(el => el.style.display = 'none');
       if (!isVisible) {
         filterObj.el.style.display = 'block';
+        // Asegurarse de poblar checkboxes con el estado actual
+        updateCheckboxes(filterObj);
       }
     });
     trh.appendChild(th);
@@ -360,35 +540,14 @@ function crearTabla(registros, storedIndices) {
       td.setAttribute('data-label', encabezados[colIdx] || '');
       if (colIdx === tiempoColIdxInner) {
         try {
-          const lastIdx = fila.length - 1;
-          const possibleCrono = fila[lastIdx];
-          const isHMS = typeof possibleCrono === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(possibleCrono).trim());
-          if (isHMS) {
-            td.textContent = String(possibleCrono).trim();
+          // Leer el tiempo almacenado en el campo Tiempo (índice 19)
+          const tiempoValue = fila[tiempoColIdxInner];
+          const isHMS = typeof tiempoValue === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(tiempoValue).trim());
+          if (tiempoValue && isHMS) {
+            td.textContent = String(tiempoValue).trim();
           } else {
-            // Fallback: calcular diferencia entre inicio y final
-            const parse = (s) => {
-              if (!s || typeof s !== 'string') return null;
-              const parts = s.split(' ');
-              if (parts.length < 2) return null;
-              const time = parts[0].split(':').map(Number);
-              const date = parts[1].split('/').map(Number);
-              if (time.length < 3 || date.length < 3) return null;
-              return new Date(date[2], date[1]-1, date[0], time[0], time[1], time[2]);
-            };
-            const a = parse(fila[0]);
-            const b = parse(fila[2]);
-            if (a && b) {
-              const diff = Math.abs(b - a);
-              const totalSeconds = Math.floor(diff / 1000);
-              const hours = Math.floor(totalSeconds / 3600);
-              const mins = Math.floor((totalSeconds % 3600) / 60);
-              const secs = totalSeconds % 60;
-              const pad = (n) => String(n).padStart(2, '0');
-              td.textContent = `${pad(hours)}:${pad(mins)}:${pad(secs)}`;
-            } else {
-              td.textContent = '';
-            }
+            // Si no hay valor o no está en formato HMS, mostrar vacío
+            td.textContent = '';
           }
         } catch (e) { td.textContent = ''; }
       } else {
@@ -505,6 +664,34 @@ function openEditModal(index) {
   // Al llenar el modal, también actualizar el datalist 'detalles' según la categoría actual
   const catVal = document.getElementById('edit-categoria')?.value || '';
   if (catVal) actualizarDetalleDatalist(catVal, 'detalles');
+
+  // Aplicar detección automática de etiquetas en el modal (según edit-nombre / edit-documento)
+  try {
+    const applyModalDetection = () => {
+      try {
+        const nombreVal = document.getElementById('edit-nombre')?.value || '';
+        const docVal = document.getElementById('edit-documento')?.value || '';
+        const keys = _detectKeywordsFromTextModal(nombreVal + ' ' + docVal);
+        const catEl = document.getElementById('edit-categoria');
+        const catNow = (catEl && (catEl.value || '').trim().toLowerCase()) || '';
+        if (catNow === 'competencias') {
+          _applyKeywordsToEditComments(keys);
+        }
+      } catch (e) { /* ignore */ }
+    };
+
+    // Ejecutar una vez al abrir
+    applyModalDetection();
+
+    // Adjuntar listeners para detectar cambios en tiempo real
+    const nombreIn = document.getElementById('edit-nombre');
+    const docIn = document.getElementById('edit-documento');
+    const catIn = document.getElementById('edit-categoria');
+    const events = ['input','change','keyup','compositionend'];
+    const attach = (el) => { if (!el) return; events.forEach(ev => el.addEventListener(ev, applyModalDetection)); el.addEventListener('paste', ()=> setTimeout(applyModalDetection,0)); el.addEventListener('cut', ()=> setTimeout(applyModalDetection,0)); };
+    attach(nombreIn); attach(docIn);
+    if (catIn) catIn.addEventListener('input', () => { try { const now = (catIn.value||'').trim().toLowerCase(); if (now === 'competencias') applyModalDetection(); } catch (e) {} });
+  } catch (e) { /* ignore */ }
 
   // Fijar el tiempo del modal según el detalle si existe
   const detalleModal = document.getElementById('edit-detalle')?.value || '';
@@ -627,6 +814,9 @@ function saveEdit() {
     'edit-detalle','edit-fallas','edit-descripcion','edit-comentarios','edit-tiempo','edit-actualizado',
     'edit-documentos','edit-categoria','edit-analista','edit-documento','edit-asignado','edit-prioridad'
   ];
+
+  // Asegurar que las etiquetas automáticas estén actualizadas antes de guardar
+  try { const nombreVal = document.getElementById('edit-nombre')?.value || ''; const docVal = document.getElementById('edit-documento')?.value || ''; const keys = _detectKeywordsFromTextModal(nombreVal + ' ' + docVal); const catNow = (document.getElementById('edit-categoria')?.value || '').trim().toLowerCase(); if (catNow === 'competencias') _applyKeywordsToEditComments(keys); } catch (e) { /* ignore */ }
 
   let datos = [];
   try { const raw = localStorage.getItem('registros'); if (raw) datos = JSON.parse(raw); } catch(e) { console.error(e); }
@@ -854,11 +1044,11 @@ function poblarSelectorColumnas() {
   if (!selector) return;
   selector.innerHTML = '';
   const opciones = [
-    "Inicio", "Estado Inicio", "Final", "Estado Final", "Nombre", "Acciones",
-    "Detalle", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión",
-    "Nuevo/Actualizado", "Cant Documentos", "Categoría", "Analista/Área",
-    "Nombre Documento", "Asignado a", "Prioridad", "Actualizado",
-    "Tiempo", "Cant Escuelas", "Cant Candidatos", "Tipos de Canales"
+    "Inicio", "Estado de Inicio", "Final", "Estado Final", "Nombre", "Acciones",
+    "Detalle de Solicitud", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión",
+    "Nuevo o Actualizado", "Cant Documentos", "Categoría", "Analista/Área",
+    "Nombre de Documento", "Asignado a", "Prioridad", "Actualizado",
+    "Tiempo (cronómetro)", "Cant Escuelas", "Cant Candidatos", "Tipos de Canales"
   ];
   const optAll = document.createElement('option');
   optAll.value = 'all';
@@ -933,11 +1123,11 @@ function generarControlesColumnas() {
   if (!cont || !dropdown) return;
 
   const encabezados = [
-    "Inicio", "Estado Inicio", "Final", "Estado Final", "Nombre", "Acciones",
-    "Detalle", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión",
-    "Nuevo/Actualizado", "Cant Documentos", "Categoría", "Analista/Área",
-    "Nombre Documento", "Asignado a", "Prioridad", "Actualizado",
-    "Tiempo", "Cant Escuelas", "Cant Candidatos", "Tipos de Canales"
+    "Inicio", "Estado de Inicio", "Final", "Estado Final", "Nombre", "Acciones",
+    "Detalle de Solicitud", "Fallas", "Descripción", "Comentarios", "Tiempo de Gestión",
+    "Nuevo o Actualizado", "Cant Documentos", "Categoría", "Analista/Área",
+    "Nombre de Documento", "Asignado a", "Prioridad", "Actualizado",
+    "Tiempo (cronómetro)", "Cant Escuelas", "Cant Candidatos", "Tipos de Canales"
   ];
 
   // Leer estado guardado o por defecto true
@@ -1576,10 +1766,12 @@ window.addEventListener('load', () => {
         reader.onload = (evt) => {
           try {
             const data = new Uint8Array(evt.target.result);
+            // Leer sin cellDates para obtener valores crudos (números para fechas/duraciones)
             const workbook = XLSX.read(data, { type: 'array' });
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
-            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            // sheet_to_json con raw:true devolverá los valores crudos (números en vez de strings/Date)
+            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true, defval: '' });
 
             if (json.length < 2) {
               alert('El archivo no tiene suficientes filas.');
@@ -1611,25 +1803,85 @@ window.addEventListener('load', () => {
             const newRows = [];
             for (let i = 1; i < json.length; i++) {
               const row = json[i] || [];
-              if (row.length < expectedHeaders.length) continue; // Saltar filas incompletas
-              const newRow = row.slice(0, expectedHeaders.length);
-              // Normalizar/convertir campos: fechas y números
+              // Crear newRow con exactamente expectedHeaders.length elementos, rellenando con vacíos si es necesario
+              const newRow = [];
+              for (let j = 0; j < expectedHeaders.length; j++) {
+                newRow[j] = row[j] || '';
+              }
+              
+              // Verificar si la fila tiene al menos algún dato (no completamente vacía)
+              const hasData = newRow.some(cell => cell && String(cell).trim() !== '');
+              if (!hasData) continue; // Saltar filas completamente vacías
+              
+              // Aplicar formato específico a cada columna según especificación:
+              // 0: Inicio (HH:MM:SS DD/MM/YYYY)
               try { newRow[0] = formatDateTime(newRow[0]); } catch(e) { newRow[0] = newRow[0] || ''; }
+              
+              // 1: Estado de Inicio (texto)
+              try { newRow[1] = formatText(newRow[1]); } catch(e) { newRow[1] = newRow[1] || ''; }
+              
+              // 2: Final (HH:MM:SS DD/MM/YYYY)
               try { newRow[2] = formatDateTime(newRow[2]); } catch(e) { newRow[2] = newRow[2] || ''; }
+              
+              // 3: Estado Final (texto)
+              try { newRow[3] = formatText(newRow[3]); } catch(e) { newRow[3] = newRow[3] || ''; }
+              
+              // 4: Nombre (texto)
+              try { newRow[4] = formatText(newRow[4]); } catch(e) { newRow[4] = newRow[4] || ''; }
+              
+              // 5: Acciones (número)
+              try { newRow[5] = formatNumber(newRow[5]); } catch(e) { newRow[5] = ''; }
+              
+              // 6: Detalle de Solicitud (texto)
+              try { newRow[6] = formatText(newRow[6]); } catch(e) { newRow[6] = newRow[6] || ''; }
+              
+              // 7: Fallas (texto)
+              try { newRow[7] = formatText(newRow[7]); } catch(e) { newRow[7] = newRow[7] || ''; }
+              
+              // 8: Descripción (texto, respetando saltos de línea)
+              try { newRow[8] = formatTextWithLineBreaks(newRow[8]); } catch(e) { newRow[8] = ''; }
+              
+              // 9: Comentarios (texto, respetando saltos de línea)
+              try { newRow[9] = formatTextWithLineBreaks(newRow[9]); } catch(e) { newRow[9] = ''; }
+              
+              // 10: Tiempo de Gestión (texto)
+              try { newRow[10] = formatText(newRow[10]); } catch(e) { newRow[10] = newRow[10] || ''; }
+              
+              // 11: Nuevo o Actualizado (texto)
+              try { newRow[11] = formatText(newRow[11]); } catch(e) { newRow[11] = newRow[11] || ''; }
+              
+              // 12: Cant Documentos (número)
+              try { newRow[12] = formatNumber(newRow[12]); } catch(e) { newRow[12] = ''; }
+              
+              // 13: Categoría (texto)
+              try { newRow[13] = formatText(newRow[13]); } catch(e) { newRow[13] = newRow[13] || ''; }
+              
+              // 14: Analista/Área (texto)
+              try { newRow[14] = formatText(newRow[14]); } catch(e) { newRow[14] = newRow[14] || ''; }
+              
+              // 15: Nombre de Documento (texto)
+              try { newRow[15] = formatText(newRow[15]); } catch(e) { newRow[15] = newRow[15] || ''; }
+              
+              // 16: Asignado a (texto)
+              try { newRow[16] = formatText(newRow[16]); } catch(e) { newRow[16] = newRow[16] || ''; }
+              
+              // 17: Prioridad (texto)
+              try { newRow[17] = formatText(newRow[17]); } catch(e) { newRow[17] = newRow[17] || ''; }
+              
+              // 18: Actualizado (HH:MM:SS DD/MM/YYYY)
               try { newRow[18] = formatDateTime(newRow[18]); } catch(e) { newRow[18] = newRow[18] || ''; }
-              // Cant Escuelas (idx 20) y Cant Candidatos (idx 21): convertir a número entero si es posible
-              try {
-                const ce = String(newRow[20] || '').trim();
-                newRow[20] = ce === '' ? '' : Number(ce);
-              } catch(e) { newRow[20] = '' }
-              try {
-                const cc = String(newRow[21] || '').trim();
-                newRow[21] = cc === '' ? '' : Number(cc);
-              } catch(e) { newRow[21] = '' }
-              // Tipos de Canales (idx 22): normalizar como texto
-              try {
-                newRow[22] = (newRow[22] || '').toString().trim();
-              } catch(e) { newRow[22] = '' }
+              
+              // 19: Tiempo (cronómetro) (HH:MM:SS)
+              try { newRow[19] = formatTime(newRow[19]); } catch(e) { newRow[19] = newRow[19] || ''; }
+              
+              // 20: Cant Escuelas (número)
+              try { newRow[20] = formatNumber(newRow[20]); } catch(e) { newRow[20] = ''; }
+              
+              // 21: Cant Candidatos (número)
+              try { newRow[21] = formatNumber(newRow[21]); } catch(e) { newRow[21] = ''; }
+              
+              // 22: Tipos de Canales (texto)
+              try { newRow[22] = formatText(newRow[22]); } catch(e) { newRow[22] = newRow[22] || ''; }
 
               newRows.push(newRow);
             }
