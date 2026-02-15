@@ -2,6 +2,18 @@
 (function(){
   const LS_KEY = 'suic_options';
 
+  // Intento de carga automática del archivo suic_password.json si está disponible
+  async function loadPasswordFile(){
+    // Si ya fue definida manualmente antes, no sobrescribirla
+    if(window.SUICPassword) return;
+    try{
+      const res = await fetch('./suic_password.json', {cache: 'no-store'});
+      if(!res.ok) return;
+      const j = await res.json();
+      if(j && typeof j === 'object') window.SUICPassword = j;
+    }catch(e){ /* ignore */ }
+  }
+
   function collectDefaults(){
     const result = {};
     // datalist elements
@@ -73,8 +85,26 @@
     saveAll: (obj)=>{ setStored(obj); try{ window.dispatchEvent(new Event('suic_options:updated')); }catch(e){} }
   };
 
+  // Password utilities: obtener/establecer los datos de contraseña y descargar/exportar
+  window.SUICOptions.getPasswordData = ()=> window.SUICPassword || null;
+  window.SUICOptions.setPasswordData = (obj)=>{ window.SUICPassword = obj; };
+  window.SUICOptions.downloadPasswordFile = (filename='suic_password.json')=>{
+    try{
+      const data = window.SUICPassword || {};
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }catch(e){}
+  };
+
   // run on DOM ready
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', async ()=>{ await loadPasswordFile(); init(); });
+  else (async ()=>{ await loadPasswordFile(); init(); })();
 
 })();
