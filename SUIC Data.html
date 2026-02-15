@@ -81,6 +81,17 @@
 
 
 <script src="theme-toggle.js"></script>
+<script src="header-sync.js"></script>
+
+<script>
+  // Inicializar header-bar en localStorage la primera vez
+  (function(){
+    const CONFIG_KEY = 'suic_header_config'
+    if(!localStorage.getItem(CONFIG_KEY) && window.SUIC_HEADER){
+      window.SUIC_HEADER.saveConfig(window.SUIC_HEADER.DEFAULT_CONFIG)
+    }
+  })()
+</script>
 
 <script>
   // Header preview: lee estado guardado en localStorage (clave profile_editor_fb_v1)
@@ -579,7 +590,7 @@
   </p>
 
   <div class="version-box">
-    <strong>Versión:</strong> 6.1.0
+    <strong>Versión:</strong> 6.2.0
   </div>
 </div>
 
@@ -608,7 +619,7 @@
         'Inicio', 'Estado de Inicio', 'Final', 'Estado Final', 'Nombre', 'Acciones',
         'Detalle de Solicitud', 'Fallas', 'Descripción', 'Comentarios', 'Tiempo de Gestión',
         'Nuevo o Actualizado', 'Cant Documentos', 'Categoría', 'Analista/Área',
-        'Nombre de Documento', 'Asignado a', 'Prioridad', 'Tiempo (cronómetro)', 'Cant Escuelas', 'Cant Candidatos'
+        'Nombre de Documento', 'Asignado a', 'Prioridad', 'Tiempo (cronómetro)', 'Cant Escuelas', 'Cant Candidatos', 'Tipos de Canales'
       ];
 
       let contenido = encabezados.join(',') + '\n';
@@ -682,6 +693,7 @@
 </script>
 <!-- Script externo -->
 <script src="codigo.js"></script>
+<script src="options.js"></script>
 
 <!-- Mostrar/Ocultar campos de Competencias cuando Categoría = "Competencias" -->
 <script>
@@ -726,7 +738,7 @@
         'Inicio', 'Estado de Inicio', 'Final', 'Estado Final', 'Nombre', 'Acciones',
         'Detalle de Solicitud', 'Fallas', 'Descripción', 'Comentarios', 'Tiempo de Gestión',
         'Nuevo o Actualizado', 'Cant Documentos', 'Categoría', 'Analista/Área',
-        'Nombre de Documento', 'Asignado a', 'Prioridad', 'Actualizado', 'Tiempo (cronómetro)', 'Cant Escuelas', 'Cant Candidatos'
+        'Nombre de Documento', 'Asignado a', 'Prioridad', 'Actualizado', 'Tiempo (cronómetro)', 'Cant Escuelas', 'Cant Candidatos', 'Tipos de Canales'
       ];
 
       let contenido = encabezados.join(',') + '\n';

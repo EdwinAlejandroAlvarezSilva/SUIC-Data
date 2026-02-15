@@ -1912,3 +1912,136 @@ window.addEventListener('load', () => {
     });
   }
 });
+
+/* ============================================
+   AUTO-COMPLETACIÓN AL PRESIONAR ENTER (MODAL)
+   Para inputs del modal de edición: si solo queda una opción filtrada, se auto-completa al presionar Enter
+   ============================================ */
+
+function setupAutocompleteOnEnterModal(inputId, dataListId) {
+  // Nota: los elementos pueden no existir al inicio, así que usamos MutationObserver o setTimeout
+  const checkAndSetup = () => {
+    const inputEl = document.getElementById(inputId);
+    const dataListEl = document.getElementById(dataListId);
+    
+    if (!inputEl || !dataListEl) {
+      // Reintentar en 100ms si aún no existe
+      setTimeout(checkAndSetup, 100);
+      return;
+    }
+    
+    // Remover listener anterior si existe (evitar duplicados)
+    inputEl.removeEventListener('keydown', handleAutoComplete);
+    
+    inputEl.addEventListener('keydown', handleAutoComplete);
+    
+    function handleAutoComplete(e) {
+      // Solo procesar Enter
+      if (e.key !== 'Enter') return;
+      
+      const currentValue = (inputEl.value || '').trim().toLowerCase();
+      if (!currentValue) return; // No hacer nada si el input está vacío
+      
+      // Obtener todas las opciones del datalist
+      const options = Array.from(dataListEl.querySelectorAll('option'));
+      
+      // Filtrar opciones que coincidan con el valor actual (case-insensitive)
+      const matchingOptions = options.filter(opt => 
+        (opt.value || '').toLowerCase().includes(currentValue)
+      );
+      
+      // Si solo hay una opción coincidente, asignarla
+      if (matchingOptions.length === 1) {
+        e.preventDefault();
+        inputEl.value = matchingOptions[0].value;
+        // Disparar evento 'change' para que se ejecuten otros handlers si existen
+        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+        // Cerrar la lista desplegable quitando el foco
+        inputEl.blur();
+      }
+    }
+  };
+  
+  checkAndSetup();
+}
+
+// Inicializar auto-completación para las 7 secciones solicitadas (en modal)
+document.addEventListener('DOMContentLoaded', () => {
+  // Tiempo de Gestión (modal)
+  setupAutocompleteOnEnterModal('edit-tiempo', 'tiempos');
+  
+  // Nuevo o Actualizado (modal)
+  setupAutocompleteOnEnterModal('edit-actualizado', 'estados');
+  
+  // Categoría (modal)
+  setupAutocompleteOnEnterModal('edit-categoria', 'categorias');
+  
+  // Asignado a (modal)
+  setupAutocompleteOnEnterModal('edit-asignado', 'asignados');
+  
+  // Prioridad (modal)
+  setupAutocompleteOnEnterModal('edit-prioridad', 'prioridades');
+  
+  // Detalle de Solicitud (modal)
+  setupAutocompleteOnEnterModal('edit-detalle', 'detalles');
+  
+  // Tipos de Canales (modal)
+  setupAutocompleteOnEnterModal('edit-tipos-canales', 'tipos-canales-list');
+});
+
+/* ============================================
+   DOBLE CLIC RÁPIDO PARA LIMPIAR CAMPOS (MODAL)
+   Al dar doble clic rápido en un input del modal, se borra su contenido
+   ============================================ */
+
+function setupDoubleClickClearModal(inputId) {
+  const checkAndSetup = () => {
+    const inputEl = document.getElementById(inputId);
+    if (!inputEl) {
+      // Reintentar en 100ms si aún no existe
+      setTimeout(checkAndSetup, 100);
+      return;
+    }
+    
+    let lastClickTime = 0;
+    const DOUBLE_CLICK_THRESHOLD = 300; // ms
+    
+    inputEl.addEventListener('click', (e) => {
+      const now = Date.now();
+      const timeDiff = now - lastClickTime;
+      
+      // Si el segundo clic ocurre dentro del umbral, limpiar
+      if (timeDiff < DOUBLE_CLICK_THRESHOLD) {
+        e.preventDefault();
+        inputEl.value = '';
+        // Disparar evento 'change' para que se ejecuten otros handlers si existen
+        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+        lastClickTime = 0; // Resetear para evitar triple clic
+      } else {
+        lastClickTime = now;
+      }
+    });
+  };
+  
+  checkAndSetup();
+}
+
+// Inicializar doble clic para limpiar en los campos del modal
+document.addEventListener('DOMContentLoaded', () => {
+  // Campos del modal (Registros.html)
+  setupDoubleClickClearModal('edit-nombre');
+  setupDoubleClickClearModal('edit-acciones');
+  setupDoubleClickClearModal('edit-detalle');
+  setupDoubleClickClearModal('edit-fallas');
+  setupDoubleClickClearModal('edit-tiempo');
+  setupDoubleClickClearModal('edit-actualizado');
+  setupDoubleClickClearModal('edit-documentos');
+  setupDoubleClickClearModal('edit-categoria');
+  setupDoubleClickClearModal('edit-analista');
+  setupDoubleClickClearModal('edit-documento');
+  setupDoubleClickClearModal('edit-asignado');
+  setupDoubleClickClearModal('edit-prioridad');
+  setupDoubleClickClearModal('edit-cant-escuelas');
+  setupDoubleClickClearModal('edit-cant-candidatos');
+  setupDoubleClickClearModal('edit-tipos-canales');
+});

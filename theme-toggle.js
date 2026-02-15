@@ -19,8 +19,14 @@ function applyTheme(theme, save = false) {
   theme = theme === 'dark' ? 'dark' : 'light';
   if (!body) body = document.body || document.getElementsByTagName('body')[0];
   if (body) {
+    // Desactivar transiciones temporalmente para que el cambio sea instantáneo
+    body.classList.add('disable-transitions');
+    // Forzar reflow
+    void body.offsetWidth;
     body.classList.remove('dark-theme', 'light-theme');
     body.classList.add(theme === 'dark' ? 'dark-theme' : 'light-theme');
+    // Eliminar la marca después de un pequeño delay para reactivar transiciones
+    setTimeout(() => { if (body) body.classList.remove('disable-transitions'); }, 60);
   }
   if (!icon) icon = document.getElementById('theme-icon');
   if (icon) icon.textContent = theme === 'dark' ? '🌞' : '🌙';

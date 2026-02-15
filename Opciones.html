@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SUIC Data - Opciones</title>
+  <link rel="icon" href="SUIC Data-02.png" type="image/png" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.modern.css" />
+  <link rel="stylesheet" href="Opciones.css" />
+  <style>
+    /* Compact profile preview in header */
+    .header-preview{margin-left:auto;display:flex;align-items:center;gap:10px;cursor:pointer}
+    .hp-avatar{width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex:0 0 36px;box-shadow:0 6px 14px rgba(2,6,23,0.12);overflow:hidden}
+    .hp-name{font-size:13px;color:#0b1220;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+    .hp-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.7);border:1px solid rgba(15,23,42,0.04);box-shadow:0 6px 18px rgba(16,24,40,0.05)}
+    .hp-avatar img{width:100%;height:100%;object-fit:cover}
+    .hp-badge:hover{transform:translateY(-2px)}
+    
+    /* Botón Volver */
+    #volver-container{position:fixed;top:80px;right:40px;z-index:1100;width:auto;display:flex;justify-content:flex-end;margin:0;pointer-events:auto}
+    #volver-container #btn-volver{background:linear-gradient(90deg,#06b6d4,#2563eb);color:#fff;border:none;border-radius:8px;padding:0.45rem 0.9rem;box-shadow:0 8px 22px rgba(37,99,235,0.18);display:inline-flex;align-items:center;gap:8px;transition:transform 160ms ease,box-shadow 160ms ease;position:relative;transform:translateY(0)}
+    #volver-container #btn-volver:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(37,99,235,0.18)}
+    @media (max-width:520px){#volver-container{right:12px;top:120px;justify-content:center}#volver-container #btn-volver{padding:0.5rem 0.8rem;transform:translateY(0)}}
+  </style>
+</head>
+<body>
+  <!-- Barra flotante superior centrada -->
+<div class="header-bar">
+  <div class="logo">
+    <a href="SUIC Data.html">
+      <img src="SUIC Data-01.png" alt="Logo" />
+    </a>
+  </div>
+
+  <nav class="menu">
+    <div class="menu-item">
+      <span>Herramientas</span>
+      <div class="submenu">
+        <a href="Registros.html">Registros</a>
+        <a href="Opciones.html">Opciones</a>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="menu-item">
+      <span>Sección 2</span>
+      <div class="submenu">
+        <a href="#">Opción 1</a>
+        <a href="#">Opción 2</a>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="menu-item">
+      <span>Enlaces</span>
+      <div class="submenu">
+        <a href="..." target="_blank">Link 1</a>
+        <a href="..." target="_blank">Link 2</a>
+        <a href="..." target="_blank">Link 3</a>
+      </div>
+    </div>
+  </nav>
+  <!-- Compact profile preview: se actualiza desde localStorage (profile_editor_fb_v1) -->
+  <div id="headerPreview" class="header-preview" title="Editar perfil">
+    <div class="hp-badge" role="button" aria-label="Vista previa de perfil">
+      <div id="hpAvatar" class="hp-avatar" style="background:#2563eb">EA</div>
+      <div id="hpName" class="hp-name">Nombre Apellido</div>
+    </div>
+  </div>
+</div>
+
+<div class="theme-toggle">
+  <button id="toggle-theme">
+    <span id="theme-icon">🌙</span>
+  </button>
+</div>
+
+<!-- Botón de Autoborrador: misma forma que el toggle de tema, a la izquierda -->
+<div class="auto-delete-toggle">
+  <button id="toggle-autodelete" type="button" title="Autoborrador: desactivado">
+    <span id="autodel-icon">🧾</span>
+  </button>
+</div>
+
+  <header id="options-header" class="header-card">
+    <div style="display:flex;flex-direction:column">
+      <h1 style="margin:0">Opciones</h1>
+      <div class="small">Edita las opciones de las listas desplegables; los cambios se sincronizan con SUIC Data y Registros.</div>
+    </div>
+    <div style="margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+      <button id="export-config-btn" class="btn btn-ghost" title="Exportar header y opciones">📦 Exportar Config</button>
+      <button id="import-config-btn" class="btn btn-ghost" title="Importar header y opciones">📦 Importar Config</button>
+      <button id="export-pass-btn" class="btn btn-ghost" title="Exportar contraseña al archivo">📥 Exportar</button>
+      <button id="import-pass-btn" class="btn btn-ghost" title="Importar contraseña del archivo">📤 Importar</button>
+      <button id="change-pass-btn" class="btn btn-ghost" title="Cambiar contraseña">🔒 Cambiar</button>
+    </div>
+  </header>
+
+  <main id="container"></main>
+
+  <!-- Botón Volver -->
+  <div id="volver-container">
+    <button id="btn-volver" title="Volver a SUIC Data">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:18px;height:18px;margin-right:6px;"><polyline points="15 18 9 12 15 6"/></svg>
+      Volver
+    </button>
+  </div>
+
+  <script src="header-sync.js"></script>
+  <script src="options.js"></script>
+  <script src="theme-toggle.js"></script>
+
+  <script>
+    // Header preview: lee estado guardado en localStorage (clave profile_editor_fb_v1)
+    (function(){
+      const LS_KEY = 'profile_editor_fb_v1'
+      const hpAvatar = document.getElementById('hpAvatar')
+      const hpName = document.getElementById('hpName')
+      const headerPreview = document.getElementById('headerPreview')
+
+      function applyState(state){
+        if(!state) return
+        // nombre
+        if(hpName) hpName.textContent = state.name || 'Nombre Apellido'
+        // avatar: imagen o iniciales
+        if(hpAvatar){
+          if(state.photo){
+            hpAvatar.innerHTML = ''
+            const img = document.createElement('img')
+            img.src = state.photo
+            hpAvatar.appendChild(img)
+          }else{
+            hpAvatar.innerHTML = ''
+            hpAvatar.style.background = state.bg || '#2563eb'
+            hpAvatar.style.color = state.initialsColor || '#ffffff'
+            hpAvatar.textContent = (state.initials||'EA').toUpperCase()
+          }
+        }
+      }
+
+      function load(){
+        try{
+          const raw = localStorage.getItem(LS_KEY)
+          if(!raw) return
+          const state = JSON.parse(raw)
+          applyState(state)
+        }catch(e){ console.warn('Header preview: no se pudo leer estado', e) }
+      }
+
+      // inicializa
+      document.addEventListener('DOMContentLoaded', load)
+      // actualiza si se cambia localStorage desde otra pestaña
+      window.addEventListener('storage', (e)=>{ if(e.key===LS_KEY) load() })
+
+      // abrir editor al hacer click
+      if(headerPreview){ headerPreview.addEventListener('click', ()=>{ window.location.href = 'profile_editor_fb.html' }) }
+    })()
+  </script>
+
+  <script>
+    // Autenticación mejorada: PBKDF2 con IndexedDB (funciona entre navegadores y rutas)
+    (function(){
+      const AUTH_STORE = 'suic_auth';
+      const DB_NAME = 'SUIC_CONFIG';
+      const DB_VERSION = 1;
+
+      // Inicializar IndexedDB
+      function openDB(){
+        return new Promise((resolve, reject)=>{
+          const req = indexedDB.open(DB_NAME, DB_VERSION);
+          req.onerror = ()=> reject(req.error);
+          req.onsuccess = ()=> resolve(req.result);
+          req.onupgradeneeded = (e)=>{
+            const db = e.target.result;
+            if(!db.objectStoreNames.contains(AUTH_STORE)){
+              db.createObjectStore(AUTH_STORE);
+            }
+          };
+        });
+      }
+
+      async function getFromDB(){
+        try{
+          const db = await openDB();
+          return new Promise((resolve, reject)=>{
+            const trans = db.transaction(AUTH_STORE, 'readonly');
+            const store = trans.objectStore(AUTH_STORE);
+            const req = store.get('password');
+            req.onerror = ()=> reject(req.error);
+            req.onsuccess = ()=> resolve(req.result);
+          });
+        }catch(e){ return null; }
+      }
+
+      async function saveToDB(data){
+        try{
+          const db = await openDB();
+          return new Promise((resolve, reject)=>{
+            const trans = db.transaction(AUTH_STORE, 'readwrite');
+            const store = trans.objectStore(AUTH_STORE);
+            const req = store.put(data, 'password');
+            req.onerror = ()=> reject(req.error);
+            req.onsuccess = ()=> resolve(true);
+          });
+        }catch(e){ return false; }
+      }
+
+      function toBase64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+      function fromBase64(s){ const str = atob(s); const arr = new Uint8Array(str.length); for(let i=0;i<str.length;i++) arr[i]=str.charCodeAt(i); return arr.buffer; }
+
+      async function derive(password, salt, iterations){
+        const enc = new TextEncoder();
+        const key = await crypto.subtle.importKey('raw', enc.encode(password), {name:'PBKDF2'}, false, ['deriveBits']);
+        const params = {name:'PBKDF2', salt: salt, iterations: iterations || 100000, hash: 'SHA-256'};
+        const bits = await crypto.subtle.deriveBits(params, key, 256);
+        return new Uint8Array(bits);
+      }
+
+      function showOverlay(html){
+        let ov = document.getElementById('auth-overlay');
+        if(!ov){ ov = document.createElement('div'); ov.id='auth-overlay'; document.body.appendChild(ov); }
+        ov.innerHTML = html;
+        ov.style.position='fixed'; ov.style.left='0'; ov.style.top='0'; ov.style.right='0'; ov.style.bottom='0';
+        ov.style.background='rgba(2,6,23,0.5)'; ov.style.display='flex'; ov.style.alignItems='center'; ov.style.justifyContent='center'; ov.style.zIndex='9999';
+      }
+
+      function hideOverlay(){ const ov = document.getElementById('auth-overlay'); if(ov) ov.remove(); }
+
+      async function requireAuth(next){
+        const storedData = await getFromDB();
+        if(!storedData){
+          // First time: require to set a password
+          showOverlay(`<div style="background:var(--surface);padding:22px;border-radius:12px;max-width:420px;width:92%;box-shadow:0 18px 40px rgba(2,6,23,0.18);">
+            <h2 style="margin-top:0">Configurar contraseña administradora</h2>
+            <p class="small">Introduce una contraseña (no se almacenará en texto plano). 💡 <strong>Funciona en cualquier navegador y ruta.</strong></p>
+            <input id="new-pass" type="password" placeholder="Contraseña" style="width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)" />
+            <input id="new-pass-2" type="password" placeholder="Repetir contraseña" style="width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)" />
+            <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+              <button id="skip-setup" class="btn btn-ghost">Cancelar</button>
+              <button id="do-setup" class="btn btn-primary">Guardar</button>
+            </div>
+          </div>`);
+
+          document.getElementById('skip-setup').addEventListener('click', ()=>{ hideOverlay(); window.location.href='SUIC Data.html'; });
+          document.getElementById('do-setup').addEventListener('click', async ()=>{
+            const a = document.getElementById('new-pass').value || '';
+            const b = document.getElementById('new-pass-2').value || '';
+            if(!a || a!==b){ alert('Las contraseñas no coinciden o están vacías'); return; }
+            const salt = crypto.getRandomValues(new Uint8Array(16)).buffer;
+            const iter = 150000;
+            const dh = await derive(a, salt, iter);
+            const payload = { salt: toBase64(salt), hash: toBase64(dh.buffer), iterations: iter };
+            await saveToDB(payload);
+            hideOverlay(); next();
+          });
+          return;
+        }
+
+        // normal login
+        showOverlay(`<div style="background:var(--surface);padding:20px;border-radius:12px;max-width:420px;width:92%;box-shadow:0 18px 40px rgba(2,6,23,0.18);">
+          <h2 style="margin-top:0">Acceso Administrador</h2>
+          <p class="small">Introduce tu contraseña para acceder. 💡 <strong>Funciona en cualquier navegador y ruta.</strong></p>
+          <input id="auth-pass" type="password" placeholder="Contraseña" style="width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)" />
+          <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+            <button id="auth-cancel" class="btn btn-ghost">Cancelar</button>
+            <button id="auth-ok" class="btn btn-primary">Entrar</button>
+          </div>
+        </div>`);
+
+        document.getElementById('auth-cancel').addEventListener('click', ()=>{ hideOverlay(); window.location.href='SUIC Data.html'; });
+        document.getElementById('auth-ok').addEventListener('click', async ()=>{
+          const pass = document.getElementById('auth-pass').value || '';
+          if(!pass){ alert('Escribe la contraseña'); return; }
+          try{
+            const salt = fromBase64(storedData.salt);
+            const expected = storedData.hash;
+            const it = storedData.iterations || 150000;
+            const dh = await derive(pass, salt, it);
+            const got = toBase64(dh.buffer);
+            if(got === expected){ hideOverlay(); next(); }
+            else { alert('Contraseña incorrecta'); }
+          }catch(e){ console.error(e); alert('Error de autenticación'); }
+        });
+      }
+
+      // Exponer requireAuth para el resto del script
+      window.SUICRequireAuth = requireAuth;
+      
+      // cambio de contraseña y manejo de datos
+      window.SUICAUTH = {
+        changePassword: async function(){
+          try{
+            const storedData = await getFromDB();
+            if(!storedData){ alert('No hay contraseña configurada.'); return; }
+            showOverlay(`<div style="background:var(--surface);padding:18px;border-radius:12px;max-width:460px;width:92%;box-shadow:0 18px 40px rgba(2,6,23,0.18);">
+              <h2 style="margin-top:0">Cambiar contraseña</h2>
+              <p class="small">Introduce la contraseña actual y la nueva contraseña.</p>
+              <input id="chg-current" type="password" placeholder="Contraseña actual" style="width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)" />
+              <input id="chg-new" type="password" placeholder="Nueva contraseña" style="width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)" />
+              <input id="chg-new-2" type="password" placeholder="Repetir nueva contraseña" style="width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)" />
+              <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+                <button id="chg-cancel" class="btn btn-ghost">Cancelar</button>
+                <button id="chg-do" class="btn btn-primary">Cambiar</button>
+              </div>
+            </div>`);
+
+            document.getElementById('chg-cancel').addEventListener('click', ()=> hideOverlay());
+            document.getElementById('chg-do').addEventListener('click', async ()=>{
+              const cur = document.getElementById('chg-current').value || '';
+              const n1 = document.getElementById('chg-new').value || '';
+              const n2 = document.getElementById('chg-new-2').value || '';
+              if(!cur){ alert('Introduce la contraseña actual'); return; }
+              if(!n1 || n1 !== n2){ alert('Las nuevas contraseñas no coinciden o están vacías'); return; }
+              try{
+                const saltBuf = fromBase64(storedData.salt);
+                const dh = await derive(cur, saltBuf, storedData.iterations || 150000);
+                if(toBase64(dh.buffer) !== storedData.hash){ alert('Contraseña actual incorrecta'); return; }
+                const newSalt = crypto.getRandomValues(new Uint8Array(16)).buffer;
+                const iter = storedData.iterations || 150000;
+                const newDh = await derive(n1, newSalt, iter);
+                const payload = { salt: toBase64(newSalt), hash: toBase64(newDh.buffer), iterations: iter };
+                await saveToDB(payload);
+                hideOverlay(); alert('Contraseña cambiada correctamente');
+              }catch(e){ console.error(e); alert('Error al cambiar la contraseña'); }
+            });
+          }catch(e){ console.error(e); alert('No se pudo iniciar el cambio de contraseña'); }
+        },
+        
+        exportPassword: async function(){
+          try{
+            const storedData = await getFromDB();
+            if(!storedData){ alert('No hay contraseña configurada para exportar.'); return; }
+            const exportData = JSON.stringify(storedData, null, 2);
+            const blob = new Blob([exportData], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `suic_password_backup_${new Date().getTime()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            alert('Contraseña exportada correctamente. Guarda este archivo en un lugar seguro.');
+          }catch(e){ console.error(e); alert('Error al exportar'); }
+        },
+
+        importPassword: async function(){
+          try{
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e)=>{
+              try{
+                const file = e.target.files[0];
+                if(!file) return;
+                const text = await file.text();
+                const data = JSON.parse(text);
+                if(!data.salt || !data.hash || !data.iterations){ alert('Archivo de contraseña inválido'); return; }
+                await saveToDB(data);
+                alert('Contraseña importada correctamente. Actualiza la página.');
+              }catch(e){ console.error(e); alert('Error al importar archivo'); }
+            };
+            input.click();
+          }catch(e){ console.error(e); alert('Error al iniciar importación'); }
+        },
+
+        exportConfig: async function(){
+          try{
+            const headerConfig = localStorage.getItem('suic_header_config');
+            const optionsConfig = localStorage.getItem('suic_options');
+            const exportData = {
+              timestamp: new Date().toISOString(),
+              headerConfig: headerConfig ? JSON.parse(headerConfig) : null,
+              optionsConfig: optionsConfig ? JSON.parse(optionsConfig) : null
+            };
+            const jsonStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([jsonStr], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `suic_config_backup_${new Date().getTime()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            alert('✅ Configuración exportada correctamente. Guarda este archivo en un lugar seguro.');
+          }catch(e){ console.error(e); alert('❌ Error al exportar configuración: ' + e.message); }
+        },
+
+        importConfig: async function(){
+          try{
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e)=>{
+              try{
+                const file = e.target.files[0];
+                if(!file) return;
+                const text = await file.text();
+                const data = JSON.parse(text);
+                if(!data.headerConfig && !data.optionsConfig){ alert('Archivo de configuración inválido'); return; }
+                if(data.headerConfig){ localStorage.setItem('suic_header_config', JSON.stringify(data.headerConfig)); }
+                if(data.optionsConfig){ localStorage.setItem('suic_options', JSON.stringify(data.optionsConfig)); }
+                alert('✅ Configuración importada correctamente. Actualiza la página.');
+                setTimeout(()=>{ location.reload(); }, 500);
+              }catch(e){ console.error(e); alert('❌ Error al importar archivo: ' + e.message); }
+            };
+            input.click();
+          }catch(e){ console.error(e); alert('❌ Error al iniciar importación: ' + e.message); }
+        }
+      };
+    })();
+
+    // Editar la barra de navegación (header-bar)
+    function renderHeaderEditor(){
+      const container = document.getElementById('container')
+      const config = window.SUIC_HEADER ? window.SUIC_HEADER.getConfig() : null
+      if(!config) return
+
+      const section = document.createElement('div')
+      section.className = 'section task-card fade-in'
+      section.innerHTML = `
+        <div class="section-title">
+          <div><strong>Editar Barra de Navegación</strong> <span class="small">(Cambios se sincronizan automáticamente)</span></div>
+        </div>
+        <div style="margin-top:12px; padding:12px; background:rgba(37,99,235,0.08); border-radius:8px; border:1px solid rgba(37,99,235,0.2)">
+          <p style="margin-top:0; font-size:0.9rem"><strong>Logo:</strong></p>
+          <input id="logo-src" type="text" value="${config.logo.src}" placeholder="Ruta de la imagen" style="width:100%; padding:8px; margin-top:4px; border-radius:6px; border:1px solid rgba(0,0,0,0.1)">
+          <p style="margin-top:12px; margin-bottom:0; font-size:0.9rem"><strong>Menús (edita JSON):</strong></p>
+          <textarea id="menus-json" style="width:100%; height:200px; padding:8px; margin-top:4px; border-radius:6px; border:1px solid rgba(0,0,0,0.1); font-family:monospace; font-size:0.85rem">${JSON.stringify(config.menus, null, 2)}</textarea>
+          <div style="display:flex; gap:8px; margin-top:8px">
+            <button id="save-header-btn" class="btn btn-primary">💾 Guardar cambios</button>
+            <button id="reset-header-btn" class="btn btn-ghost">↺ Restaurar valores</button>
+          </div>
+        </div>
+      `
+      container.insertBefore(section, container.firstChild)
+
+      // Eventos
+      document.getElementById('save-header-btn').addEventListener('click', ()=>{
+        try{
+          const newConfig = {
+            logo: { src: document.getElementById('logo-src').value, alt: config.logo.alt, href: config.logo.href },
+            menus: JSON.parse(document.getElementById('menus-json').value)
+          }
+          window.SUIC_HEADER.saveConfig(newConfig)
+          alert('✅ Cambios guardados. La barra de navegación se actualizará en todas las páginas.')
+          renderHeaderEditor()
+        }catch(e){
+          alert('❌ Error: ' + e.message)
+        }
+      })
+
+      document.getElementById('reset-header-btn').addEventListener('click', ()=>{
+        if(!confirm('¿Restaurar valores por defecto?')) return
+        window.SUIC_HEADER.saveConfig(window.SUIC_HEADER.DEFAULT_CONFIG)
+        alert('✅ Valores restaurados.')
+        renderHeaderEditor()
+      })
+    }
+
+    // UI para administrar opciones
+    function render(){
+      const container = document.getElementById('container')
+      renderHeaderEditor()
+      const all = window.SUICOptions.getAll() || {};
+      const keys = Object.keys(all).sort();
+      if(keys.length===0){ return; }
+      keys.forEach(id=>{
+        const sec = document.createElement('div'); sec.className='section task-card fade-in';
+        const h = document.createElement('div'); h.className='section-title'; h.innerHTML = `<div><strong>${id}</strong> <span class="small">(${Array.isArray(all[id])?all[id].length:0} opciones)</span></div>`;
+        sec.appendChild(h);
+        const optsWrap = document.createElement('div'); optsWrap.className='opts';
+        (all[id]||[]).forEach((v, idx)=>{
+          const span = document.createElement('span'); span.className='opt';
+          span.innerHTML = `<span class="label">${v}</span>`;
+          const del = document.createElement('button'); del.title='Eliminar opción'; del.innerText='✕'; del.className='remove btn btn-ghost';
+          del.addEventListener('click', ()=>{ if(!confirm('Eliminar opción "'+v+'"?')) return; const copy = (window.SUICOptions.getAll()||{}); copy[id] = copy[id].filter((x,i)=>i!==idx); window.SUICOptions.saveAll(copy); render(); });
+          span.appendChild(del);
+          optsWrap.appendChild(span);
+        });
+        sec.appendChild(optsWrap);
+
+        const addRow = document.createElement('div'); addRow.className='add-row';
+        const input = document.createElement('input'); input.placeholder='Nueva opción'; input.className='search-input';
+        const btn = document.createElement('button'); btn.innerText='Agregar'; btn.className='btn btn-primary'; btn.addEventListener('click', ()=>{
+          const val = (input.value||'').trim(); if(!val){ alert('Escribe una opción válida'); return; }
+          const copy = (window.SUICOptions.getAll()||{});
+          copy[id] = copy[id]||[]; if(copy[id].includes(val)){ alert('La opción ya existe'); return; }
+          copy[id].push(val); window.SUICOptions.saveAll(copy); input.value=''; render();
+        });
+        addRow.appendChild(input); addRow.appendChild(btn);
+        sec.appendChild(addRow);
+        container.appendChild(sec);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // require admin auth first, then render
+      if(window.SUICRequireAuth && typeof window.SUICRequireAuth === 'function'){
+        window.SUICRequireAuth(()=>{ setTimeout(()=>{ render(); }, 50); });
+      } else {
+        setTimeout(()=>{ render(); }, 50);
+      }
+      // attach button listeners
+      const chBtn = document.getElementById('change-pass-btn');
+      const expBtn = document.getElementById('export-pass-btn');
+      const impBtn = document.getElementById('import-pass-btn');
+      const expConfigBtn = document.getElementById('export-config-btn');
+      const impConfigBtn = document.getElementById('import-config-btn');
+      const volverBtn = document.getElementById('btn-volver');
+      if(chBtn){ chBtn.addEventListener('click', ()=>{ if(window.SUICAUTH && typeof window.SUICAUTH.changePassword === 'function') window.SUICAUTH.changePassword(); }); }
+      if(expBtn){ expBtn.addEventListener('click', ()=>{ if(window.SUICAUTH && typeof window.SUICAUTH.exportPassword === 'function') window.SUICAUTH.exportPassword(); }); }
+      if(impBtn){ impBtn.addEventListener('click', ()=>{ if(window.SUICAUTH && typeof window.SUICAUTH.importPassword === 'function') window.SUICAUTH.importPassword(); }); }
+      if(expConfigBtn){ expConfigBtn.addEventListener('click', ()=>{ if(window.SUICAUTH && typeof window.SUICAUTH.exportConfig === 'function') window.SUICAUTH.exportConfig(); }); }
+      if(impConfigBtn){ impConfigBtn.addEventListener('click', ()=>{ if(window.SUICAUTH && typeof window.SUICAUTH.importConfig === 'function') window.SUICAUTH.importConfig(); }); }
+      if(volverBtn){ volverBtn.addEventListener('click', ()=>{ window.location.href = 'SUIC Data.html'; }); }
+    });
+
+    // react to updates from other tabs
+    window.addEventListener('storage', (e)=>{ if(e.key === 'suic_options') render(); });
+    window.addEventListener('suic_options:updated', ()=>render());
+  </script>
+</body>
+</html>
