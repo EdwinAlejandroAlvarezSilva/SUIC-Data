@@ -43,8 +43,8 @@ body, input, select, textarea, button{ font-family: Inter, "Segoe UI", system-ui
 /* Buttons: glass + ripple container */
 .btn{ position:relative; overflow:hidden; display:inline-flex; align-items:center; gap:0.5rem; padding:0.6rem 0.9rem; border-radius:10px; border:none; cursor:pointer; font-weight:600; transition: transform 140ms ease, box-shadow 140ms ease; }
 .btn:active{ transform: translateY(1px); }
-.btn-primary{ background: linear-gradient(180deg,var(--primary),var(--primary-600)); color:white; box-shadow: 0 8px 30px rgba(37,99,235,0.12); }
-.btn-ghost{ background: transparent; color:var(--primary); border:1px solid rgba(37,99,235,0.08); }
+.btn-primary{ background: #0097A9; color:white; box-shadow: 0 8px 30px rgba(37,99,235,0.12); }
+.btn-ghost{ background: #DA291C; color:#ffffff; border:1px solid rgba(0, 0, 0, 0.08); }
 .btn-neutral{ background: #f8fafc; color:#0f172a; border:1px solid rgba(15,23,42,0.04); }
 .btn-danger{ background: linear-gradient(180deg,#ff7a7a,#ef4444); color:white; }
 
@@ -85,7 +85,7 @@ input:focus, textarea:focus, select:focus{ box-shadow: 0 10px 30px rgba(6,95,95,
 @media (max-width:900px){ .search-input{ width:140px } .search-input:focus{ width:220px } .tipificacion-card{ flex-direction:column; align-items:stretch } }
 
 /* Dark mode tweaks */
-body.dark-theme{ background: linear-gradient(180deg,#050606,#071219); color:#d9eef6 }
+body.dark-theme{ background: linear-gradient(180deg,#050606,#071219); color:#000000 }
 body.dark-theme .task-card{ background: linear-gradient(180deg,#071219,#08121a); border:1px solid rgba(255,255,255,0.04); box-shadow:none }
 body.dark-theme input, body.dark-theme textarea, body.dark-theme select{ background:#07121a; color:#d9eef6; border:1px solid rgba(255,255,255,0.04) }
 body.dark-theme .btn-neutral{ background:rgba(255,255,255,0.03); color:#d9eef6 }

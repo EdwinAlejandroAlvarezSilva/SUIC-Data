@@ -10,26 +10,7 @@ function formatCell(value) {
 let persistentFiltersMap = {};
 let persistentFilterSearch = {};
 
-// Mapeo de opciones por categoría (replicado desde codigo.js para comportamiento consistente)
-const opcionesPorCategoria = {
-    "Accesos al Portal": ["Asignar rol y organización"],
-    "Banner": ["Actualizar", "Desactivar", "Diseñar", "Publicar"],
-    "Base Usuarios": ["Asignar rol y organización", "Desactivar, eliminar usuarios"],
-    "Bases": ["Actualizar", "Desactivar", "Publicar"],
-    "Boletín": ["Actualizar", "Diseñar y publicar"],
-    "Competencias": ["Agregar Candidatos", "Ampliación de Proceso", "Atención Fallas", "Cambio de Correo", "Creación de Proceso", "Envío Recordatorio", "Reportes"],
-    "Consolidado de Precios": ["Actualizar listas", "Implementación Nuevas Opciones", "Stock Diario (11092023)"],
-    "Diagrama Postventa": ["Actualizar", "Propuesta", "Publicar"],
-    "Diagrama Venta (Resumen NP)": ["Actualizar", "Creación de Diagrama", "Desactivar", "Publicar"],
-    "Documento": ["Actualizar", "Dar formato SUIC", "Desactivar"],
-    "Ficha": ["Actualizar Ficha", "Actualizar Registro del Caso", "Creación Ficha", "Creación Registro del Caso", "Desactivar Ficha", "Desactivar Registro del Caso", "Publicar Ficha", "Publicar Registro del Caso"],
-    "Hojas de Venta": ["Desactivar", "Publicar"],
-    "INFO ATC": ["Actualizar Info ATC", "Crear Info ATC", "Desactivar"],
-    "Otros": ["Capacitación", "Reunión", "Revisión de fallas", "Tiempo Fallas en el Portal", "Trabajos TI en MDY"],
-    "Pop up": ["Diseñar y publicar", "Programar Alerta"],
-    "Proyecto": ["Propuesta de Mejora", "Proyectos C&C"],
-    "Publicaciones": ["Publicar"],
-};
+// Nota: opcionesPorCategoria está definida en codigo.js y se reutiliza aquí
 
 function actualizarDetalleDatalist(valorCategoria, datalistId = 'detalles') {
   try {

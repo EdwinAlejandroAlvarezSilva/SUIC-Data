@@ -712,8 +712,10 @@ window.addEventListener("load", () => {
   const dataGuardada = localStorage.getItem("registros");
   if (dataGuardada) {
     registros = JSON.parse(dataGuardada);
-    document.getElementById("contador-formularios").textContent =
-      `🗂️ ${registros.length} Registro${registros.length === 1 ? "" : "s"}`;
+    const contadorEl = document.getElementById("contador-formularios");
+    if (contadorEl) {
+      contadorEl.textContent = `🗂️ ${registros.length} Registro${registros.length === 1 ? "" : "s"}`;
+    }
   }
   // Intentar restaurar borrador (si existe)
   try { _restoreDraftPrompt(); } catch (e) { /* ignore */ }

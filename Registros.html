@@ -65,7 +65,12 @@
 							#volver-container { justify-content: center; }
 							#volver-container #btn-volver { padding: 0.5rem 0.8rem; transform: translateY(0); }
 						}
-		</style>	<script src="header-sync.js"></script>		<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+		</style>
+	<script>
+		// Datos de contraseña incrustados (sin restricciones CORS)
+		window.suicPasswordData = {"salt":"jb5GL0asRCjLGuS1aXG+pg==","hash":"E6XzFRSMPO7daUQ1pKaswiNlb6GfARcb+iYqcI7Vt3A=","iterations":150000};
+	</script>
+	<script src="header-sync.js"></script>		<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="registros-page">
 	<!-- Barra flotante superior centrada -->
@@ -588,11 +593,12 @@
 		})();
 		</script>
 		<script src="theme-toggle.js"></script>
+		<!-- options.js DEBE estar ANTES de codigo.js para aplicar opciones guardadas -->
+		<script src="options.js"></script>
 		<script src="codigo Registros.js"></script>
 		<script src="ui-effects.js"></script>
 		<!-- Incluir el script compartido (contiene la lógica del autoborrador, cronómetro y guardado) -->
 		<script src="codigo.js"></script>
-		<script src="options.js"></script>
 		<script>
 		  // Botón Volver -> redirige a la página principal SUIC Data
 		  document.addEventListener('DOMContentLoaded', function(){
@@ -617,8 +623,8 @@
 										'Inicio', 'Estado de Inicio', 'Final', 'Estado Final', 'Nombre', 'Acciones',
 										'Detalle de Solicitud', 'Fallas', 'Descripción', 'Comentarios', 'Tiempo de Gestión',
 										'Nuevo o Actualizado', 'Cant Documentos', 'Categoría', 'Analista/Área',
-'Nombre de Documento', 'Asignado a', 'Prioridad', 'Actualizado', 'Tiempo', 'Cant Escuelas', 'Cant Candidatos', 'Tipos de Canales'
-							];
+										'Nombre de Documento', 'Asignado a', 'Prioridad', 'Actualizado', 'Tiempo (cronómetro)', 'Cant Escuelas', 'Cant Candidatos', 'Tipos de Canales'
+									];
 
 							let contenido = encabezados.join(',') + '\n';
 
@@ -711,5 +717,6 @@
 		    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
 		  })();
 		</script>
+
 </body>
 </html>

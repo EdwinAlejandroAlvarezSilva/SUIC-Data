@@ -3,6 +3,7 @@
   // Ripple effect for elements with .btn class
   function createRipple(event){
     const btn = event.currentTarget;
+    if (!btn || typeof btn.getBoundingClientRect !== 'function') return;
     const rect = btn.getBoundingClientRect();
     const size = Math.max(rect.width, rect.height) * 1.2;
     const ripple = document.createElement('span');

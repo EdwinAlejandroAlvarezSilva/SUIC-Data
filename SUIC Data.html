@@ -80,6 +80,11 @@
 
 
 
+<script>
+  // Datos de contraseña incrustados (sin restricciones CORS)
+  window.suicPasswordData = {"salt":"jb5GL0asRCjLGuS1aXG+pg==","hash":"E6XzFRSMPO7daUQ1pKaswiNlb6GfARcb+iYqcI7Vt3A=","iterations":150000};
+</script>
+
 <script src="theme-toggle.js"></script>
 <script src="header-sync.js"></script>
 
@@ -691,9 +696,9 @@
     }catch(err){ console.error(err); alert('Ocurrió un error al generar la descarga: ' + (err && err.message ? err.message : String(err))); }
   }
 </script>
-<!-- Script externo -->
-<script src="codigo.js"></script>
+<!-- Script externo: options.js DEBE estar ANTES de codigo.js para aplicar opciones guardadas -->
 <script src="options.js"></script>
+<script src="codigo.js"></script>
 
 <!-- Mostrar/Ocultar campos de Competencias cuando Categoría = "Competencias" -->
 <script>
