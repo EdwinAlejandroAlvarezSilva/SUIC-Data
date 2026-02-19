@@ -595,6 +595,55 @@
 		<script src="theme-toggle.js"></script>
 		<!-- options.js DEBE estar ANTES de codigo.js para aplicar opciones guardadas -->
 		<script src="options.js"></script>
+
+		<!-- Storage sync: cargar antes de codigo Registros.js para que syncRegistros esté disponible -->
+		<script src="storage-fs.js"></script>
+		<script src="storage-client.js"></script>
+		<script src="auto-backup.js"></script>
+
+		<!-- Proteger selectores de tiempo: ejecutar después de que todos los scripts se carguen -->
+		<script>
+		  document.addEventListener('DOMContentLoaded', function(){
+		    // Garantizar que los selectores "edit-inicio" y "edit-final" siempre muestren sus opciones
+		    function ensureSelectorsIntact(){
+		      const selInicio = document.getElementById('edit-inicio');
+		      const selFinal = document.getElementById('edit-final');
+		      
+		      // Si edit-inicio está vacío, reconstruir
+		      if(selInicio && selInicio.options.length === 0){
+		        const opt1 = document.createElement('option');
+		        opt1.value = '';
+		        opt1.textContent = 'Selecciona…';
+		        selInicio.appendChild(opt1);
+		        
+		        const opt2 = document.createElement('option');
+		        opt2.value = 'En proceso';
+		        opt2.textContent = 'En proceso';
+		        selInicio.appendChild(opt2);
+		      }
+		      
+		      // Si edit-final está vacío, reconstruir
+		      if(selFinal && selFinal.options.length === 0){
+		        const options = [
+		          { value: '', text: 'Selecciona…' },
+		          { value: 'Continuar', text: 'Continuar' },
+		          { value: 'En pausa', text: 'En pausa' },
+		          { value: 'Reasignado', text: 'Reasignado' },
+		          { value: 'Finalizado', text: 'Finalizado' }
+		        ];
+		        options.forEach(opt => {
+		          const option = document.createElement('option');
+		          option.value = opt.value;
+		          option.textContent = opt.text;
+		          selFinal.appendChild(option);
+		        });
+		      }
+		    }
+		    
+		    // Garantizar integridad de selectores después de pequeño delay (asegurar que todos los scripts acabaron)
+		    setTimeout(ensureSelectorsIntact, 100);
+		  }, false);
+		</script>
 		<script src="codigo Registros.js"></script>
 		<script src="ui-effects.js"></script>
 		<!-- Incluir el script compartido (contiene la lógica del autoborrador, cronómetro y guardado) -->

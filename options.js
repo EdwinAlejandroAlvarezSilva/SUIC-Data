@@ -168,9 +168,12 @@
   // Función interna de reseteo (sin el sufijo window.)
   function collectDefaults(){
     const result = {};
-    // datalist elements
+    // datalist elements - EXCLUIR selectores de tiempo/hora que no se procesan
+    const excludeIds = ['inicio', 'final', 'edit-inicio', 'edit-final', 'hora-inicio', 'hora-final', 'edit-hora-inicio', 'edit-hora-final'];
     document.querySelectorAll('datalist, select').forEach(el=>{
       if(!el.id) return;
+      // Excluir selectores que no deberían procesarse por options.js
+      if(excludeIds.includes(el.id)) return;
       const arr = [];
       if(el.tagName.toLowerCase() === 'datalist'){
         el.querySelectorAll('option').forEach(o=>{ if(o.value!==undefined) arr.push(String(o.value)); });
@@ -192,7 +195,12 @@
 
   function applyOptions(obj){
     if(!obj) return;
+    // IDs que NUNCA deben ser procesados por options.js
+    // Estos selectores mantienen sus opciones originales del HTML
+    const excludeIds = ['inicio', 'final', 'edit-inicio', 'edit-final', 'hora-inicio', 'hora-final', 'edit-hora-inicio', 'edit-hora-final'];
     Object.keys(obj).forEach(id=>{
+      // Saltar si está en la lista de exclusión
+      if(excludeIds.includes(id)) return;
       try{
         const el = document.getElementById(id);
         if(!el) return;
@@ -462,6 +470,7 @@
   // Carga contraseña
   // En Opciones.html: solo carga contraseña, init() se llama después de validación
   // En otras páginas: carga contraseña + aplica opciones ANTES de que el código las use
+  
   if(document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', async ()=>{ 
       await ensurePasswordData(); 

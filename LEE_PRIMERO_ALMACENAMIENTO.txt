@@ -1,0 +1,112 @@
+========================================
+  SOLUCIONES DE ALMACENAMIENTO - SUIC DATA
+========================================
+
+¡Buenas noticias! El sistema de almacenamiento es 100% AUTOMÁTICO.
+NO necesitas hacer nada manualmente. Todo funciona en background.
+
+┌─ OPCIÓN 1: Archivo de Almacenamiento (Recomendado)
+│  • NO necesita servidor
+│  • NO necesita PowerShell
+│  • Botón en la página: "Usar archivo como Almacenamiento"
+│  • 🤖 AUTO-BACKUP cada 10 minutos (automático, invisible)
+│  • 🤖 AUTO-RESTORE si se pierde datos (automático)
+│  • Datos se guardan automáticamente en un archivo JSON
+│  • Funciona offline
+│  ✓ CLIC EN BOTÓN Y LISTO, EL RESTO ES AUTOMÁTICO
+│
+
+├─ OPCIÓN 2: Servidor Express (.bat file)
+│  • Si la Opción 1 no funciona en tu empresa
+│  • Archivo: INICIAR_ALMACENAMIENTO.bat
+│  • Simplemente: doble clic en el archivo
+│  • Se abre una ventana, déjala abierta mientras usas SUIC Data
+│  • 🤖 AUTO-BACKUP cada 10 minutos (automático, invisible)
+│  • 🤖 AUTO-RESTORE si se pierde datos (automático)
+│  • Datos se guardan en tipificaciones.json
+│  ✓ DOBLE CLIC Y LISTO, TODO AUTOMÁTICO
+│
+
+└─ OPCIÓN 3: Sistema de Snapshots en el Navegador
+   • ¿No funciona ni Opción 1 ni 2?
+   • El navegador automáticamente hace snapshots de tu trabajo
+   • 🤖 Backup cada 10 minutos (completamente invisible)
+   • 🤖 Auto-restore si cambias de perfil
+   • Mantiene hasta 10 versiones de tu trabajo
+   • ✅ FUNCIONA SIN HACER NADA (incluso sin archivo o servidor)
+
+
+¿QUÉ SIGNIFICA "AUTOMÁTICO"?
+============================
+
+✓ Cada vez que crear, editar o eliminar: auto-backup inmediato
+✓ Cada 10 minutos: auto-backup periódico
+✓ Si se cierra el navegador/perfil: auto-restore automático
+✓ Si se pierden datos: recuperación automática del backup
+✓ Sin botones, sin popups, sin configuración extras
+✓ Totalmente invisible para ti
+
+
+PASOS RÁPIDOS:
+==============
+
+► Opción 1 (Recomendado):
+  1. Abre SUIC Data.html en Chrome/Edge
+  2. Clic en "Usar archivo como Almacenamiento" (esquina gris)
+  3. Selecciona tipificaciones.json en tu carpeta
+  4. ¡LISTO! El resto es automático
+     - Auto-backup cada 10 min
+     - Auto-restore si falta datos
+     - Crea/Edita/Elimina normalmente
+
+
+► Opción 2 (Si Opción 1 no funciona):
+  1. Doble clic en INICIAR_ALMACENAMIENTO.bat
+  2. Se abre una ventana (déjala abierta)
+  3. ¡LISTO! El resto es automático
+     - Auto-backup cada 10 min
+     - Auto-restore si falta datos
+     - Crea/Edita/Elimina normalmente
+
+
+► Opción 3 (Fallback total):
+  1. Simplemente usa SUIC Data.html
+  2. No hagas nada especial
+  3. ¡EL NAVEGADOR AUTOMÁTICAMENTE HACE BACKUP!
+     - Auto-backup cada 10 min en IndexedDB
+     - Auto-restore si cambias de perfil
+     - Crea/Edita/Elimina normalmente
+
+
+CÓMO VERIFICAR QUE FUNCIONA:
+============================
+
+1. Abre SUIC Data.html
+2. Presiona F12 → Consola
+3. Busca mensajes [auto-backup]
+4. Verás: "snapshot guardado: X registros"
+5. Cada 10 minutos verás nuevos snapshots
+6. ✅ Significa que auto-backup está funcionando
+
+
+¿NECESITAS MÁS DETALLES?
+=========================
+
+Lee el archivo: ALMACENAMIENTO_GUIA.md (con explicaciones detalladas)
+
+
+IMPORTANTE:
+===========
+
+❌ NO necesitas hacer backup manualmente
+❌ NO necesitas hacer restore manualmente  
+❌ NO necesitas descargar/cargar archivos
+❌ NO necesitas botones de ningún tipo
+
+✅ TODO ES AUTOMÁTICO Y TRANSPARENTE
+✅ LOS DATOS SIEMPRE ESTÁN SEGUROS
+✅ RECUPERACIÓN AUTOMÁTICA SI ALGO FALLA
+
+
+¿Prueba Opción 1 o 2 primero? ¡El resto sucede automáticamente!
+

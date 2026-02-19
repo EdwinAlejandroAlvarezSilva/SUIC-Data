@@ -1,5 +1,47 @@
 // Script para renderizar la tabla de registros en Registros.html
 
+// Restaurar datos desde el almacenamiento (archivo/servidor) cuando se carga la página
+// El archivo es la fuente de verdad; localStorage es backup
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    if (typeof window.loadRegistrosFromStorage === 'function') {
+      const loaded = await window.loadRegistrosFromStorage();
+      if (Array.isArray(loaded) && loaded.length > 0) {
+        console.info('[codigo Registros.js] - registros restaurados desde almacenamiento:', loaded.length, 'elementos');
+      }
+      // Cargar y mostrar la tabla con los datos (de localStorage, que acaba de actualizarse)
+      setTimeout(() => {
+        if (typeof cargarYMostrar === 'function') {
+          cargarYMostrar();
+          console.info('[codigo Registros.js] - tabla renderizada');
+        }
+      }, 100);
+    } else {
+      // Si no hay loadRegistrosFromStorage, usar el viejo método (solo localStorage)
+      setTimeout(() => {
+        if (typeof cargarYMostrar === 'function') cargarYMostrar();
+      }, 100);
+    }
+  } catch (e) {
+    console.error('[codigo Registros.js] - error durante restauración/renderizado:', e);
+    // Fallback: renderizar lo que esté en localStorage
+    setTimeout(() => {
+      if (typeof cargarYMostrar === 'function') cargarYMostrar();
+    }, 100);
+  }
+});
+
+// Evento adicional: actualizar tabla si el servidor tiene datos más nuevos
+window.addEventListener('registros:loaded', (evt) => {
+  try {
+    const { registros: newRegistros, count } = evt.detail || {};
+    if (Array.isArray(newRegistros) && newRegistros.length >= 0) {
+      console.info('[codigo Registros.js] - datos actualizados desde servidor, re-renderizando tabla');
+      if (typeof cargarYMostrar === 'function') cargarYMostrar();
+    }
+  } catch (e) { /* ignore */ }
+});
+
 function formatCell(value) {
   if (value === null || value === undefined) return "";
   return String(value);
@@ -556,6 +598,7 @@ function crearTabla(registros, storedIndices) {
         if (Array.isArray(all) && typeof realIndex === 'number') {
           all.splice(realIndex, 1);
           localStorage.setItem('registros', JSON.stringify(all));
+          try{ if(typeof window.syncRegistros === 'function') window.syncRegistros(all); }catch(e){}
         }
       } catch (e) { console.error(e); }
       cargarYMostrar();
@@ -593,6 +636,8 @@ function crearTabla(registros, storedIndices) {
 
 /* --- Modal edit helpers --- */
 function openEditModal(index) {
+  // Guardar referencia al elemento enfocado antes de abrir modal
+  try { window._suic_last_focused = document.activeElement; } catch (e) { window._suic_last_focused = null; }
   let datos = [];
   try { const raw = localStorage.getItem('registros'); if (raw) datos = JSON.parse(raw); } catch(e) { console.error(e); }
   const fila = datos[index];
@@ -731,6 +776,14 @@ function openEditModal(index) {
   modal.style.display = 'flex';
   modal.setAttribute('aria-hidden', 'false');
 
+  // Mover foco al primer control del modal para accesibilidad
+  try {
+    const first = document.getElementById('edit-nombre') || modal.querySelector('input,select,textarea,button');
+    if (first && typeof first.focus === 'function') {
+      first.focus({ preventScroll: true });
+    }
+  } catch (e) { }
+
   // Intentar restaurar borrador específico del modal si existe (comportamiento similar a SUIC Data)
   try {
     _restoreModalDraftPrompt();
@@ -756,8 +809,26 @@ function openEditModal(index) {
 function closeEditModal() {
   const modal = document.getElementById('edit-modal');
   if (!modal) return;
-  modal.style.display = 'none';
+  // Antes de ocultar, si algún elemento dentro del modal tiene foco, quitarle el foco
+  try {
+    const active = document.activeElement;
+    if (active && modal.contains(active)) {
+      try { active.blur(); } catch(e){}
+    }
+  } catch(e){}
+
+  // Restaurar foco al elemento previo si existe (evita que el elemento oculto quede enfocado)
+  try {
+    if (window._suic_last_focused && typeof window._suic_last_focused.focus === 'function') {
+      window._suic_last_focused.focus({ preventScroll: true });
+    } else {
+      const fallback = document.getElementById('btn-volver') || document.body;
+      try { if(fallback && typeof fallback.focus === 'function') fallback.focus({ preventScroll: true }); } catch(e){}
+    }
+  } catch(e){}
+
   modal.setAttribute('aria-hidden', 'true');
+  modal.style.display = 'none';
   // Detener autosave y limpiar borrador del modal al cerrarlo
   try { _stopModalAutosave(); } catch (e) {}
   try { _clearModalDraft(); } catch (e) {}
@@ -854,6 +925,7 @@ function saveEdit() {
   // Insertar al inicio
   datos.unshift(nuevo);
   localStorage.setItem('registros', JSON.stringify(datos));
+  try{ if(typeof window.syncRegistros === 'function') window.syncRegistros(datos); }catch(e){}
   closeEditModal();
   cargarYMostrar();
   // Al guardar el registro, eliminar el borrador del modal y detener autosave
@@ -1512,7 +1584,8 @@ window.addEventListener('load', () => {
   if (btnRef) btnRef.addEventListener('click', cargarYMostrar);
   if (btnVac) btnVac.addEventListener('click', () => {
     if (!confirm('¿Vaciar todo el historial de registros?')) return;
-    localStorage.removeItem('registros');
+    try{ localStorage.removeItem('registros'); }catch(e){}
+    try{ if(typeof window.syncRegistros === 'function') window.syncRegistros([]); }catch(e){}
     cargarYMostrar();
   });
   
@@ -1683,6 +1756,7 @@ window.addEventListener('load', () => {
         const indices = Array.from(selectedRows).sort((a,b) => b - a);
         indices.forEach(idx => all.splice(idx, 1));
         localStorage.setItem('registros', JSON.stringify(all));
+        try{ if(typeof window.syncRegistros === 'function') window.syncRegistros(all); }catch(e){}
         selectedRows.clear();
         showSelectionColumn = false;
       } catch (e) { console.error(e); }
@@ -1716,6 +1790,7 @@ window.addEventListener('load', () => {
           all.push(nuevaFila);
         });
         localStorage.setItem('registros', JSON.stringify(all));
+        try{ if(typeof window.syncRegistros === 'function') window.syncRegistros(all); }catch(e){}
         selectedRows.clear();
         showSelectionColumn = false;
       } catch (e) { console.error(e); }

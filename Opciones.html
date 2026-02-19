@@ -843,7 +843,9 @@
         const all = window.SUICOptions.getAll() || {};
         // secciones que deben respetar bloqueo estricto (no añadir ni eliminar cuando están bloqueadas)
         const protectedSections = ['asignados','buscador-columna','categorias','detalles','edit-final','edit-inicio','estados','prioridades','tiempos','tipos-canales-list'];
-        const keys = Object.keys(all).sort();
+        // Secciones a excluir del renderizado
+        const excludedSections = ['inicio', 'final'];
+        const keys = Object.keys(all).sort().filter(k => !excludedSections.includes(k));
         if(keys.length===0){ isRendering = false; return; }
         keys.forEach(id=>{
         const sec = document.createElement('div'); sec.className='section task-card fade-in';

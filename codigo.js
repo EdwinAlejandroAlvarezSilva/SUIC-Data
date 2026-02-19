@@ -204,6 +204,18 @@ function _clearDraft() {
 
 function _restoreDraftPrompt() {
   try {
+    // Evitar mostrar dialogos (confirm) cuando la pestaña no está activa
+    if (typeof document !== 'undefined' && document.hidden) {
+      try {
+        // Reintentar al recuperar el foco de la ventana
+        const onFocus = function() {
+          try { window.removeEventListener('focus', onFocus); } catch(e){}
+          try { _restoreDraftPrompt(); } catch(e){}
+        };
+        window.addEventListener('focus', onFocus);
+      } catch(e){}
+      return;
+    }
     const raw = localStorage.getItem(DRAFT_KEY);
     if (!raw) return;
     const draft = JSON.parse(raw);
@@ -315,8 +327,36 @@ document.addEventListener('DOMContentLoaded', () => {
 // (no dependemos de cambios manuales en los inputs de hora)
 let registros = [];
 
+// Restaurar datos desde el almacenamiento (archivo/servidor) cuando se carga la página
+// El archivo es la fuente de verdad; localStorage es backup
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    if (typeof window.loadRegistrosFromStorage === 'function') {
+      const loaded = await window.loadRegistrosFromStorage();
+      if (Array.isArray(loaded) && loaded.length > 0) {
+        registros = loaded;
+        console.info('[codigo.js] - registros restaurados desde almacenamiento:', registros.length, 'elementos');
+      }
+    }
+  } catch (e) {
+    console.error('[codigo.js] - error restaurando registros:', e);
+  }
+});
+
+// Evento adicional: actualizar registros si el servidor tiene datos más nuevos
+window.addEventListener('registros:loaded', (evt) => {
+  try {
+    const { registros: newRegistros, count } = evt.detail || {};
+    if (Array.isArray(newRegistros) && newRegistros.length > 0) {
+      registros = newRegistros;
+      console.info('[codigo.js] - registros actualizados desde servidor:', count, 'elementos');
+    }
+  } catch (e) { /* ignore */ }
+});
+
 setInterval(() => {
   localStorage.setItem("registros", JSON.stringify(registros));
+  try{ if(typeof window.syncRegistros === 'function') window.syncRegistros(registros); }catch(e){}
 }, 300000); // Guarda cada 5 minutos
 
 function guardarFormulario(isAuto=false) {
@@ -442,6 +482,7 @@ function guardarFormulario(isAuto=false) {
 
   registros.push(registro);
   localStorage.setItem("registros", JSON.stringify(registros));
+  try{ if(typeof window.syncRegistros === 'function') window.syncRegistros(registros); }catch(e){}
   // Borrar borrador tras guardado exitoso
   try { _clearDraft(); } catch (e) { /* ignore */ }
 
@@ -846,6 +887,7 @@ function borrarHistorial() {
     // Solo eliminamos los registros guardados; no tocar el formulario actual ni el cronómetro
     registros = [];
     localStorage.removeItem("registros");
+    try{ if(typeof window.syncRegistros === 'function') window.syncRegistros([]); }catch(e){}
     document.getElementById("contador-formularios").textContent = "🗂️ 0 Registros";
     alert("Historial eliminado con éxito. El formulario actual no fue modificado.");
 
