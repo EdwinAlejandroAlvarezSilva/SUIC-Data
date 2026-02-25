@@ -135,30 +135,9 @@ function _applyKeywordsToEditComments(keys) {
   } catch (e) { /* ignore */ }
 }
 
-// Mapeo detalle -> tiempo (valores mostrados en el input #tiempo / #edit-tiempo)
-const detalleToTiempo = {
-  'En Línea (1 - 10 minutos)': 'En Línea (1 - 10 minutos)',
-  'Actualizar': 'En Línea (1 - 10 minutos)',
-  'Actualizar Ficha': 'Medio (91 - 180 minutos)',
-  'Creación de Proceso': 'Alto (181 - 360 minutos)',
-  'Creación Ficha': 'Medio (91 - 180 minutos)',
-  'Agregar Candidatos': 'Medio (91 - 180 minutos)',
-  'Capacitación': 'Alto (181 - 360 minutos)',
-  'Desactivar': 'Medio (91 - 180 minutos)',
-  'Publicar': 'Medio (91 - 180 minutos)',
-  'Reportes': 'Superior (más de 361 minutos)',
-  'Propuesta': 'Medio (91 - 180 minutos)',
-  'Programar Alerta': 'En Línea (1 - 10 minutos)'
-};
-
-function getTiempoForDetalle(detalle) {
-  if (!detalle) return '';
-  if (detalleToTiempo.hasOwnProperty(detalle)) return detalleToTiempo[detalle];
-  // si no existe, añadir con valor por defecto y devolverlo
-  const defecto = 'Medio (91 - 180 minutos)';
-  detalleToTiempo[detalle] = defecto;
-  return defecto;
-}
+// [REMOVIDO] Mapeo automático detalleToTiempo que causaba sincronización no deseada
+// entre "Detalle de Solicitud" y "Tiempo de Gestión". El usuario ahora puede
+// editar ambos campos de forma independiente.
 
 // Función para formatear fechas al formato hh:mm:ss dd/mm/yyyy
 function formatDateTime(value) {
@@ -720,10 +699,8 @@ function openEditModal(index) {
   } catch (e) { /* ignore */ }
 
   // Fijar el tiempo del modal según el detalle si existe
-  const detalleModal = document.getElementById('edit-detalle')?.value || '';
-  const tiempoModalEl = document.getElementById('edit-tiempo');
-  // Sólo rellenar el campo edit-tiempo desde el mapeo si no tiene ya un valor guardado
-  if (tiempoModalEl && !tiempoModalEl.value) tiempoModalEl.value = getTiempoForDetalle(detalleModal);
+  // NOTA: Se removió el auto-llenado automático de 'edit-tiempo' para permitir edición independiente
+  // if (tiempoModalEl && !tiempoModalEl.value) tiempoModalEl.value = getTiempoForDetalle(detalleModal);
   
   // Inicializar estado del cronómetro modal según valores guardados, SIN modificar inputs al abrir.
   // Priorizar el campo oculto 'edit-cronometro' si existe; si no, usar el valor de 'edit-tiempo' sólo si tiene formato HH:MM:SS.
@@ -1601,38 +1578,8 @@ window.addEventListener('load', () => {
     if (categoriaMain.value) actualizarDetalleDatalist(categoriaMain.value, 'detalles');
   }
 
-  // Listeners: al cambiar detalle (o edit-detalle) actualizar el campo tiempo correspondiente
-  const detalleMain = document.getElementById('detalle');
-  if (detalleMain) {
-    detalleMain.addEventListener('input', function() {
-      const tEl = document.getElementById('tiempo');
-      if (tEl) {
-        // Solo autocompletar si el usuario no editó manualmente 'tiempo'
-        const manual = tEl.dataset && tEl.dataset.manual === 'true';
-        if (!manual) tEl.value = getTiempoForDetalle(this.value);
-      }
-    });
-    // Marcar cuando el usuario edita manualmente el campo 'tiempo' para evitar sobrescribirlo
-    const tiempoMainEl = document.getElementById('tiempo');
-    if (tiempoMainEl) {
-      tiempoMainEl.addEventListener('input', function(){ this.dataset.manual = 'true'; });
-    }
-  }
-  const detalleEdit = document.getElementById('edit-detalle');
-  if (detalleEdit) {
-    detalleEdit.addEventListener('input', function() {
-      const tEl = document.getElementById('edit-tiempo');
-      if (tEl) {
-        const manual = tEl.dataset && tEl.dataset.manual === 'true';
-        if (!manual) tEl.value = getTiempoForDetalle(this.value);
-      }
-    });
-    // Marcar cuando el usuario edita manualmente el campo 'edit-tiempo'
-    const tiempoEditEl = document.getElementById('edit-tiempo');
-    if (tiempoEditEl) {
-      tiempoEditEl.addEventListener('input', function(){ this.dataset.manual = 'true'; });
-    }
-  }
+  // Nota: Se removieron los event listeners automáticos que sincronizaban
+  // 'Detalle de Solicitud' con 'Tiempo de Gestión' para permitir edición independiente
 
   // Botón Acciones
   const btnAcciones = document.getElementById('btn-acciones');
@@ -2045,59 +1992,6 @@ document.addEventListener('DOMContentLoaded', () => {
   setupAutocompleteOnEnterModal('edit-tipos-canales', 'tipos-canales-list');
 });
 
-/* ============================================
-   DOBLE CLIC RÁPIDO PARA LIMPIAR CAMPOS (MODAL)
-   Al dar doble clic rápido en un input del modal, se borra su contenido
-   ============================================ */
-
-function setupDoubleClickClearModal(inputId) {
-  const checkAndSetup = () => {
-    const inputEl = document.getElementById(inputId);
-    if (!inputEl) {
-      // Reintentar en 100ms si aún no existe
-      setTimeout(checkAndSetup, 100);
-      return;
-    }
-    
-    let lastClickTime = 0;
-    const DOUBLE_CLICK_THRESHOLD = 300; // ms
-    
-    inputEl.addEventListener('click', (e) => {
-      const now = Date.now();
-      const timeDiff = now - lastClickTime;
-      
-      // Si el segundo clic ocurre dentro del umbral, limpiar
-      if (timeDiff < DOUBLE_CLICK_THRESHOLD) {
-        e.preventDefault();
-        inputEl.value = '';
-        // Disparar evento 'change' para que se ejecuten otros handlers si existen
-        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
-        lastClickTime = 0; // Resetear para evitar triple clic
-      } else {
-        lastClickTime = now;
-      }
-    });
-  };
-  
-  checkAndSetup();
-}
-
-// Inicializar doble clic para limpiar en los campos del modal
-document.addEventListener('DOMContentLoaded', () => {
-  // Campos del modal (Registros.html)
-  setupDoubleClickClearModal('edit-nombre');
-  setupDoubleClickClearModal('edit-acciones');
-  setupDoubleClickClearModal('edit-detalle');
-  setupDoubleClickClearModal('edit-fallas');
-  setupDoubleClickClearModal('edit-tiempo');
-  setupDoubleClickClearModal('edit-actualizado');
-  setupDoubleClickClearModal('edit-documentos');
-  setupDoubleClickClearModal('edit-categoria');
-  setupDoubleClickClearModal('edit-analista');
-  setupDoubleClickClearModal('edit-documento');
-  setupDoubleClickClearModal('edit-asignado');
-  setupDoubleClickClearModal('edit-prioridad');
-  setupDoubleClickClearModal('edit-cant-escuelas');
-  setupDoubleClickClearModal('edit-cant-candidatos');
-  setupDoubleClickClearModal('edit-tipos-canales');
-});
+// [REMOVIDO] Funcionalidad de doble clic para limpiar campos en modal
+// Se removió para permitir que el usuario edite libremente sin perder contenido
+// por accidentes al hacer doble clic

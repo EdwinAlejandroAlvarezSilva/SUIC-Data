@@ -1027,54 +1027,9 @@ document.addEventListener('DOMContentLoaded', () => {
   setupAutocompleteOnEnter('tipos-canales', 'tipos-canales-list');
 });
 
-/* ============================================
-   DOBLE CLIC RÁPIDO PARA LIMPIAR CAMPOS
-   Al dar doble clic rápido en un input, se borra su contenido
-   ============================================ */
-
-function setupDoubleClickClear(inputId) {
-  const inputEl = document.getElementById(inputId);
-  if (!inputEl) return;
-  
-  let lastClickTime = 0;
-  const DOUBLE_CLICK_THRESHOLD = 300; // ms
-  
-  inputEl.addEventListener('click', (e) => {
-    const now = Date.now();
-    const timeDiff = now - lastClickTime;
-    
-    // Si el segundo clic ocurre dentro del umbral, limpiar
-    if (timeDiff < DOUBLE_CLICK_THRESHOLD) {
-      e.preventDefault();
-      inputEl.value = '';
-      // Disparar evento 'change' para que se ejecuten otros handlers si existen
-      inputEl.dispatchEvent(new Event('change', { bubbles: true }));
-      lastClickTime = 0; // Resetear para evitar triple clic
-    } else {
-      lastClickTime = now;
-    }
-  });
-}
-
-// Inicializar doble clic para limpiar en los campos solicitados
-document.addEventListener('DOMContentLoaded', () => {
-  // Campos normales (SUIC Data.html)
-  setupDoubleClickClear('nombre');
-  setupDoubleClickClear('acciones');
-  setupDoubleClickClear('detalle');
-  setupDoubleClickClear('fallas');
-  setupDoubleClickClear('tiempo');
-  setupDoubleClickClear('actualizado');
-  setupDoubleClickClear('documentos');
-  setupDoubleClickClear('categoria');
-  setupDoubleClickClear('analista');
-  setupDoubleClickClear('documento');
-  setupDoubleClickClear('asignado');
-  setupDoubleClickClear('prioridad');
-  setupDoubleClickClear('cant-escuelas');
-  setupDoubleClickClear('cant-candidatos');
-  setupDoubleClickClear('tipos-canales');
-});
+// [REMOVIDO] Funcionalidad de doble clic para limpiar campos
+// Se removió para permitir que el usuario edite libremente sin perder contenido
+// por accidentes al hacer doble clic
 
 
 
