@@ -52,6 +52,70 @@ function formatCell(value) {
 let persistentFiltersMap = {};
 let persistentFilterSearch = {};
 
+// Guardar estado de filtros y búsquedas en localStorage
+function saveSearchFilterState() {
+  try {
+    const texto = document.getElementById('buscador-texto')?.value || '';
+    const columna = document.getElementById('buscador-columna')?.value || 'all';
+    const fecha = document.getElementById('buscador-fecha')?.value || '';
+    const chkInicio = document.getElementById('chk-fecha-inicio')?.checked || false;
+    const chkFinal = document.getElementById('chk-fecha-final')?.checked || false;
+    const chkActualizado = document.getElementById('chk-fecha-actualizado')?.checked || false;
+    
+    const state = {
+      texto,
+      columna,
+      fecha,
+      chkInicio,
+      chkFinal,
+      chkActualizado,
+      filters: persistentFiltersMap,
+      searches: persistentFilterSearch
+    };
+    localStorage.setItem('registros_filter_state', JSON.stringify(state));
+  } catch (e) {
+    console.error('[registros] error guardando estado de filtros:', e);
+  }
+}
+
+// Restaurar estado de filtros y búsquedas desde localStorage
+function restoreSearchFilterState() {
+  try {
+    const raw = localStorage.getItem('registros_filter_state');
+    if (!raw) return false;
+    
+    const state = JSON.parse(raw);
+    if (!state) return false;
+    
+    // Restaurar valores de búsqueda
+    const searchInput = document.getElementById('buscador-texto');
+    const searchSelect = document.getElementById('buscador-columna');
+    const searchFecha = document.getElementById('buscador-fecha');
+    
+    if (searchInput && state.texto) searchInput.value = state.texto;
+    if (searchSelect && state.columna) searchSelect.value = state.columna;
+    if (searchFecha && state.fecha) searchFecha.value = state.fecha;
+    
+    // Restaurar checkboxes de fecha
+    const chkInicio = document.getElementById('chk-fecha-inicio');
+    const chkFinal = document.getElementById('chk-fecha-final');
+    const chkActualizado = document.getElementById('chk-fecha-actualizado');
+    
+    if (chkInicio) chkInicio.checked = !!state.chkInicio;
+    if (chkFinal) chkFinal.checked = !!state.chkFinal;
+    if (chkActualizado) chkActualizado.checked = !!state.chkActualizado;
+    
+    // Restaurar estado interno de filtros
+    if (state.filters) persistentFiltersMap = state.filters;
+    if (state.searches) persistentFilterSearch = state.searches;
+    
+    return true;
+  } catch (e) {
+    console.error('[registros] error restaurando estado de filtros:', e);
+    return false;
+  }
+}
+
 // Nota: opcionesPorCategoria está definida en codigo.js y se reutiliza aquí
 
 function actualizarDetalleDatalist(valorCategoria, datalistId = 'detalles') {
@@ -420,6 +484,7 @@ function crearTabla(registros, storedIndices) {
           }
           // Persistir selección del filtro por encabezado
           try { persistentFiltersMap[filterObj.headerName] = Array.from(filterObj.values); } catch(e){}
+          try { saveSearchFilterState(); } catch(e){}
           applyFilters();
           updateIcon(filterObj.th, filterObj);
         });
@@ -645,12 +710,17 @@ function openEditModal(index) {
   try {
     const cronEl = document.getElementById('edit-cronometro');
     if (cronEl) {
-      let found = '';
-      for (let i = fila.length - 1; i >= Math.max(0, fila.length - 4); i--) {
-        const possible = fila[i];
-        if (typeof possible === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(String(possible).trim())) { found = String(possible).trim(); break; }
+      // Detectar si la fila viene de SUIC Data.html (sin 'actualizado', tiempo en índice 17) o de Registros.html (con 'actualizado', tiempo en 19)
+      let tiempoIndex;
+      if (fila.length <= 18) {
+        // De SUIC Data.html: tiempo en fila[17]
+        tiempoIndex = 17;
+      } else {
+        // De Registros.html: tiempo en fila[19]
+        tiempoIndex = 19;
       }
-      cronEl.value = found;
+      const tiempoGuardado = fila[tiempoIndex] || '00:00:00';
+      cronEl.value = tiempoGuardado;
     }
   } catch (e) { /* ignore */ }
 
@@ -703,8 +773,14 @@ function openEditModal(index) {
   // if (tiempoModalEl && !tiempoModalEl.value) tiempoModalEl.value = getTiempoForDetalle(detalleModal);
   
   // Inicializar estado del cronómetro modal según valores guardados, SIN modificar inputs al abrir.
+  // Detener cualquier intervalo previo
+  if (_modalChronInterval) {
+    clearInterval(_modalChronInterval);
+    _modalChronInterval = null;
+  }
+  _modalRunning = false;
+  _modalLastStartTs = null;
   // Priorizar el campo oculto 'edit-cronometro' si existe; si no, usar el valor de 'edit-tiempo' sólo si tiene formato HH:MM:SS.
-  _resetModalChrono();
   try {
     const cronHidden = (document.getElementById('edit-cronometro')?.value || '').trim();
     if (/^\d{1,2}:\d{2}:\d{2}$/.test(cronHidden)) {
@@ -719,26 +795,8 @@ function openEditModal(index) {
         const secs = Number(hhmmss[3]);
         _modalElapsedSeconds = hrs * 3600 + mins * 60 + secs;
       } else {
-        // Como último recurso, intentar calcularlo a partir de edit-hora-inicio y edit-hora-final
-        const hi = document.getElementById('edit-hora-inicio')?.value || '';
-        const hf = document.getElementById('edit-hora-final')?.value || '';
-        const parse = (s) => {
-          if (!s || typeof s !== 'string') return null;
-          const parts = s.split(' ');
-          if (parts.length < 2) return null;
-          const time = parts[0].split(':').map(Number);
-          const date = parts[1].split('/').map(Number);
-          if (time.length < 3 || date.length < 3) return null;
-          return new Date(date[2], date[1]-1, date[0], time[0], time[1], time[2]);
-        };
-        const d1 = parse(hi);
-        const d2 = parse(hf);
-        if (d1 && d2) {
-          const totalSeconds = Math.floor(Math.abs(d2 - d1) / 1000);
-          _modalElapsedSeconds = totalSeconds;
-        } else {
-          _modalElapsedSeconds = 0;
-        }
+        // No calcular diferencia de fechas; el modal usa solo el cronómetro
+        _modalElapsedSeconds = 0;
       }
     }
     _updateModalChronDisplay();
@@ -918,9 +976,24 @@ document.addEventListener('click', (e) => {
 });
 
 // --- Autosave / Restore específico para el modal de edición (Registros) ---
-const MODAL_DRAFT_KEY = 'suic_registros_edit_draft';
+const MODAL_DRAFT_KEY_BASE = 'suic_registros_edit_draft';
 let _modalAutoSaveInterval = null;
 let _modalAutosaveActive = false;
+
+function getModalDraftKey() {
+  const modal = document.getElementById('edit-modal');
+  const editIndex = modal?.dataset?.editIndex ? String(modal.dataset.editIndex).trim() : '';
+  const nombre = String(document.getElementById('edit-nombre')?.value || '').trim();
+  const documento = String(document.getElementById('edit-documento')?.value || '').trim();
+  const categoria = String(document.getElementById('edit-categoria')?.value || '').trim();
+
+  const normalize = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '');
+  const descriptor = [normalize(categoria), normalize(nombre), normalize(documento)].filter(Boolean).join(':');
+
+  if (editIndex) return `${MODAL_DRAFT_KEY_BASE}:${editIndex}`;
+  if (descriptor) return `${MODAL_DRAFT_KEY_BASE}:${descriptor}`;
+  return MODAL_DRAFT_KEY_BASE;
+}
 
 function _serializeModalFields() {
   const ids = [
@@ -972,25 +1045,21 @@ function _saveModalDraft() {
         lastStartTs: _modalLastStartTs
       }
     };
-    localStorage.setItem(MODAL_DRAFT_KEY, JSON.stringify(draft));
+    localStorage.setItem(getModalDraftKey(), JSON.stringify(draft));
   } catch (e) { /* ignore */ }
 }
 
 function _clearModalDraft() {
-  try { localStorage.removeItem(MODAL_DRAFT_KEY); } catch (e) { /* ignore */ }
+  try { localStorage.removeItem(getModalDraftKey()); } catch (e) { /* ignore */ }
 }
 
 function _restoreModalDraftPrompt() {
   try {
-    const raw = localStorage.getItem(MODAL_DRAFT_KEY);
+    if (localStorage.getItem('autosave_enabled') !== '1') return;
+    const raw = localStorage.getItem(getModalDraftKey());
     if (!raw) return;
     const draft = JSON.parse(raw);
     if (!draft) return;
-    // Si el autoborrador está activado, eliminar sin preguntar
-    try { if (localStorage.getItem('autodelete_enabled') === '1') { localStorage.removeItem(MODAL_DRAFT_KEY); return; } } catch(e){}
-    const ok = confirm('Se encontró un borrador de edición. ¿Deseas restaurarlo en el modal?');
-    if (!ok) return;
-    // Aplicar campos
     _applySerializedModalFields(draft.fields);
 
     // Si el borrador del modal incluía un valor para 'edit-tiempo', marcarlo como editado manualmente
@@ -1310,6 +1379,8 @@ function cargarYMostrar() {
     const saved = rawSaved ? JSON.parse(rawSaved) : null;
     if (Array.isArray(saved)) applyColumnsVisibility(saved);
   } catch (e) { /* ignore */ }
+  // Guardar estado actual de filtros y búsquedas
+  saveSearchFilterState();
 }
 
 // Colocar hora actual en el modal según tipo ('inicio' | 'final')
@@ -1352,7 +1423,11 @@ function _updateModalChronDisplay() {
   if (_modalRunning && _modalLastStartTs) {
     total += Math.floor((Date.now() - _modalLastStartTs) / 1000);
   }
-  span.textContent = `Tiempo: ${_modalFormatHHMMSS(total)}`;
+  const timeStr = _modalFormatHHMMSS(total);
+  span.textContent = `Tiempo: ${timeStr}`;
+  // Actualizar el campo oculto para guardar el tiempo
+  const cronEl = document.getElementById('edit-cronometro');
+  if (cronEl) cronEl.value = timeStr;
 }
 
 function _startModalChrono() {
@@ -1463,33 +1538,7 @@ function colocarHoraModal_tipoControl(tipo, valorSelect) {
   }
 }
 
-function calcularDiferenciaModal() {
-  const a = document.getElementById('edit-hora-inicio')?.value || '';
-  const b = document.getElementById('edit-hora-final')?.value || '';
-  const out = document.getElementById('edit-diferencia-horas');
-  if (!a || !b) { if (out) out.textContent = ''; return; }
-  // Intentar parsear formato HH:MM:SS DD/MM/YYYY y devolver diferencia en HH:MM:SS (horas totales)
-  try {
-    const parse = (s) => {
-      const parts = s.split(' ');
-      if (parts.length < 2) return null;
-      const time = parts[0].split(':').map(Number);
-      const date = parts[1].split('/').map(Number);
-      if (time.length < 3 || date.length < 3) return null;
-      return new Date(date[2], date[1]-1, date[0], time[0], time[1], time[2]);
-    };
-    const d1 = parse(a);
-    const d2 = parse(b);
-    if (!d1 || !d2) { if (out) out.textContent = ''; return; }
-    const diff = Math.abs(d2 - d1);
-    const totalSeconds = Math.floor(diff / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const mins = Math.floor((totalSeconds % 3600) / 60);
-    const secs = totalSeconds % 60;
-    const pad = (n) => String(n).padStart(2, '0');
-  if (out) out.textContent = `Tiempo: ${pad(hours)}:${pad(mins)}:${pad(secs)}`;
-  } catch (e) { if (out) out.textContent = ''; }
-}
+
 
 // Vincular eventos en load para selects y inputs del modal
 window.addEventListener('load', () => {
@@ -1530,13 +1579,16 @@ window.addEventListener('load', () => {
   });
   const hi = document.getElementById('edit-hora-inicio');
   const hf = document.getElementById('edit-hora-final');
-  if (hi) hi.addEventListener('input', calcularDiferenciaModal);
   // No recalculamos diferencia; el modal usa sólo el cronómetro
 });
 
 window.addEventListener('load', () => {
   generarControlesColumnas();
   poblarSelectorColumnas();
+  
+  // Restaurar filtros y búsquedas guardadas antes de cargar
+  restoreSearchFilterState();
+  
   cargarYMostrar();
 
   // Buscador - debounce
@@ -1552,6 +1604,8 @@ window.addEventListener('load', () => {
     if (searchInput) searchInput.value = ''; 
     if (searchSelect) searchSelect.value = 'all'; 
     if (searchFecha) searchFecha.value = '';
+    persistentFiltersMap = {};
+    persistentFilterSearch = {};
     cargarYMostrar(); 
   });
 
@@ -1627,9 +1681,18 @@ window.addEventListener('load', () => {
   const chkFechaInicio = document.getElementById('chk-fecha-inicio');
   const chkFechaFinal = document.getElementById('chk-fecha-final');
   const chkFechaActualizado = document.getElementById('chk-fecha-actualizado');
-  if (chkFechaInicio) chkFechaInicio.addEventListener('change', cargarYMostrar);
-  if (chkFechaFinal) chkFechaFinal.addEventListener('change', cargarYMostrar);
-  if (chkFechaActualizado) chkFechaActualizado.addEventListener('change', cargarYMostrar);
+  if (chkFechaInicio) chkFechaInicio.addEventListener('change', () => {
+    saveSearchFilterState();
+    cargarYMostrar();
+  });
+  if (chkFechaFinal) chkFechaFinal.addEventListener('change', () => {
+    saveSearchFilterState();
+    cargarYMostrar();
+  });
+  if (chkFechaActualizado) chkFechaActualizado.addEventListener('change', () => {
+    saveSearchFilterState();
+    cargarYMostrar();
+  });
 
   // Opciones de acciones
   const accionSeleccionarTodo = document.getElementById('accion-seleccionar-todo');

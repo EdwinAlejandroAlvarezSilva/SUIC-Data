@@ -272,30 +272,34 @@ body.dark-theme .header-bar {
 /* Contenedor para el autoborrador: a la izquierda del toggle-theme */
 .auto-delete-toggle {
   position: fixed;
-  /* Colocar justo debajo del botón de tema: mismo right, top desplazado */
   top: calc(25rem + 72px);
-  right: 0.3rem; /* alinea con el toggle de tema */
-  z-index: 1000;
+  right: 0.3rem;
+  z-index: 100000 !important;
+  pointer-events: auto !important;
 }
 
 /* Reusar la misma forma que #toggle-theme pero apuntando a la izquierda */
-/* Autoborrador - estado inactivo: verde claro (aplica en claro y oscuro) */
+/* Autoborrador - estado inactivo: rojo claro y estado activo: verde claro */
 #toggle-autodelete {
+  position: fixed;
+  top: calc(25rem + 72px);
+  right: 0.3rem;
+  z-index: 100001 !important;
   width: 60px;
   height: 60px;
-  /* Verde claro agradable y legible */
-  background-color: #A7E6A1; /* verde claro */
-  color: #06380a; /* texto oscuro para contraste sobre verde claro */
+  background-color: #FF6B6B; /* rojo claro por defecto (desactivado) */
+  color: #ffffff;
   border: none;
-  border-right: 4px solid #8ccf8a; /* borde ligeramente más oscuro */
+  border-right: 4px solid #b33;
   border-radius: 30px 0 0 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(6,56,10,0.08);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
   transition: background-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
   overflow: hidden;
+  pointer-events: auto !important;
 
   margin: 0;
   padding: 0;
@@ -303,34 +307,34 @@ body.dark-theme .header-bar {
 
 /* Icono cambia color cuando está activo */
 /* Estado activo / inactivo por tema (autoborrador)
-   - Inactivo: verde claro
-   - Activo: rojo
+   - Inactivo: rojo
+   - Activo: verde
    Definimos reglas separadas para modo claro y oscuro para garantizar contraste. */
 
-/* Modo claro: inactivo = verde claro, activo = rojo */
+/* Modo claro: inactivo = rojo, activo = verde */
 body.light-theme #toggle-autodelete {
-  background-color: #A7E6A1; /* verde claro */
-  color: #06380a; /* texto oscuro para contraste sobre verde */
-  border-right-color: #8ccf8a;
-  box-shadow: 0 2px 6px rgba(6,56,10,0.08);
-}
-body.light-theme #toggle-autodelete.active {
   background-color: #FF6B6B; /* rojo claro */
   color: #ffffff;
   border-right-color: #b33;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+body.light-theme #toggle-autodelete.active {
+  background-color: #A7E6A1; /* verde claro */
+  color: #06380a;
+  border-right-color: #8ccf8a;
 }
 
-/* Modo oscuro: inactivo = verde más vibrante (sobre fondo oscuro), activo = rojo más profundo */
+/* Modo oscuro: inactivo = rojo profundo, activo = verde vibrante */
 body.dark-theme #toggle-autodelete {
-  background-color: #2FB85B; /* verde vibrante */
-  color: #00320a; /* texto oscuro para legibilidad */
-  border-right-color: #27a14e;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-}
-body.dark-theme #toggle-autodelete.active {
   background-color: #D9534F; /* rojo profundo */
   color: #ffffff;
   border-right-color: #b33;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+}
+body.dark-theme #toggle-autodelete.active {
+  background-color: #2FB85B; /* verde vibrante */
+  color: #00320a;
+  border-right-color: #27a14e;
 }
 
 /* Tema claro */

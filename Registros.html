@@ -508,33 +508,33 @@
 		     asegurar que funcione en esta página aunque el script compartido
 		     se cargue tarde o no se ejecute. -->
 		<div class="auto-delete-toggle">
-		  <button id="toggle-autodelete" type="button" title="Autoborrador: desactivado">
-		    <span id="autodel-icon">🧾</span>
+          <button id="toggle-autodelete" type="button" title="Autoguardado: desactivado">
+            <span id="autodel-icon">🧾</span>
 		  </button>
 		</div>
 
 		<script>
-		// Inicializador local del botón de autoborrador (Registros.html)
+		// Inicializador local del botón de autoguardado (Registros.html)
 		(function(){
 		  const DRAFT_KEY = 'suic_draft';
-		  const AUTODELETE_KEY = 'autodelete_enabled';
+		  const AUTOSAVE_KEY = 'autosave_enabled';
 
-		  function isAutodeleteEnabled(){ try{ return localStorage.getItem(AUTODELETE_KEY) === '1' }catch(e){ return false } }
-		  function setAutodeleteEnabled(v){ try{ localStorage.setItem(AUTODELETE_KEY, v ? '1' : '0') }catch(e){} }
+		  function isAutoSaveEnabled(){ try{ return localStorage.getItem(AUTOSAVE_KEY) === '1' }catch(e){ return false } }
+		  function setAutoSaveEnabled(v){ try{ localStorage.setItem(AUTOSAVE_KEY, v ? '1' : '0') }catch(e){} }
 
 		  function updateAutodelBtn(){
 		    const btn = document.getElementById('toggle-autodelete');
 		    const ico = document.getElementById('autodel-icon');
 		    if(!btn) return;
-		    const enabled = isAutodeleteEnabled();
+		    const enabled = isAutoSaveEnabled();
 		    if(enabled){
 		      btn.classList.add('active');
-		      btn.title = 'Autoborrador: activado';
-		      if(ico) ico.textContent = '🗑️';
+		      btn.title = 'Autoguardado: activado';
+		      if(ico) ico.textContent = '🧾';
 		    } else {
 		      btn.classList.remove('active');
-		      btn.title = 'Autoborrador: desactivado';
-		      if(ico) ico.textContent = '🧾';
+		      btn.title = 'Autoguardado: desactivado';
+		      if(ico) ico.textContent = '🚫';
 		    }
 		  }
 
@@ -577,14 +577,24 @@
 		    const btn = document.getElementById('toggle-autodelete');
 		    if(!btn) return;
 		    btn.addEventListener('click', ()=>{
-		      const cur = isAutodeleteEnabled();
+		      const cur = isAutoSaveEnabled();
 		      // Guardado inmediato del cronómetro y borrador para evitar pérdida
 		      quickSaveCronAndDraft();
 		      // Alternar preferencia
-		      setAutodeleteEnabled(!cur);
+		      setAutoSaveEnabled(!cur);
 		      updateAutodelBtn();
-		      // Si activan el autoborrador, eliminar el borrador (comportamiento original)
-		      if(!cur){ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }
+		      if(!cur) {
+		        if (typeof window.DraftSystem !== 'undefined' && window.DraftSystem.startAutoSave) {
+		          window.DraftSystem.startAutoSave();
+		          if (typeof window.DraftSystem.restore === 'function') {
+		            window.DraftSystem.restore();
+		          }
+		        }
+		      } else {
+		        if (typeof window.DraftSystem !== 'undefined' && window.DraftSystem.stopAutoSave) {
+		          window.DraftSystem.stopAutoSave();
+		        }
+		      }
 		    });
 		  }
 
@@ -600,6 +610,10 @@
 		<script src="storage-fs.js"></script>
 		<script src="storage-client.js"></script>
 		<script src="auto-backup.js"></script>
+		<!-- Sistema avanzado de auto-borrador con múltiples capas de almacenamiento -->
+		<script src="draft-system-advanced.js"></script>
+		<!-- Sincronización mejorada del cronómetro -->
+		<script src="chrono-sync.js"></script>
 
 		<!-- Proteger selectores de tiempo: ejecutar después de que todos los scripts se carguen -->
 		<script>

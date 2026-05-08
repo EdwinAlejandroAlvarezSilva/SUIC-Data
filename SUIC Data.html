@@ -73,7 +73,7 @@
 
 <!-- Botón de Autoborrador: misma forma que el toggle de tema, a la izquierda -->
 <div class="auto-delete-toggle">
-  <button id="toggle-autodelete" type="button" title="Autoborrador: desactivado">
+  <button id="toggle-autodelete" type="button" title="Autoguardado: desactivado">
     <span id="autodel-icon">🧾</span>
   </button>
 </div>
@@ -595,7 +595,7 @@
   </p>
 
   <div class="version-box">
-    <strong>Versión:</strong> 6.3.0
+    <strong>Versión:</strong> 6.3.3
   </div>
 </div>
 
@@ -701,7 +701,64 @@
 <script src="storage-fs.js"></script>
 <script src="storage-client.js"></script>
 <script src="auto-backup.js"></script>
+<!-- Sistema avanzado de auto-borrador con múltiples capas de almacenamiento -->
+<script src="draft-system-advanced.js"></script>
+<!-- Sincronización mejorada del cronómetro -->
+<script src="chrono-sync.js"></script>
 <script src="codigo.js"></script>
+
+<script>
+  (function(){
+    const AUTOSAVE_KEY = 'autosave_enabled';
+
+    function isAutoSaveEnabled(){
+      try { return localStorage.getItem(AUTOSAVE_KEY) === '1'; } catch (e) { return false; }
+    }
+
+    function setAutoSaveEnabled(value){
+      try { localStorage.setItem(AUTOSAVE_KEY, value ? '1' : '0'); } catch (e) { }
+    }
+
+    function updateAutoSaveButton(){
+      const btn = document.getElementById('toggle-autodelete');
+      const ico = document.getElementById('autodel-icon');
+      if (!btn) return;
+      const enabled = isAutoSaveEnabled();
+      btn.classList.toggle('active', enabled);
+      btn.title = enabled ? 'Autoguardado: activado' : 'Autoguardado: desactivado';
+      if (ico) ico.textContent = enabled ? '🧾' : '🚫';
+    }
+
+    function toggleAutoSave(){
+      const enabled = !isAutoSaveEnabled();
+      setAutoSaveEnabled(enabled);
+      updateAutoSaveButton();
+      if (typeof window.DraftSystem !== 'undefined') {
+        if (enabled && typeof window.DraftSystem.startAutoSave === 'function') {
+          window.DraftSystem.startAutoSave();
+          if (typeof window.DraftSystem.restore === 'function') {
+            window.DraftSystem.restore();
+          }
+        } else if (!enabled && typeof window.DraftSystem.stopAutoSave === 'function') {
+          window.DraftSystem.stopAutoSave();
+        }
+      }
+    }
+
+    function initAutoSaveButton(){
+      updateAutoSaveButton();
+      const btn = document.getElementById('toggle-autodelete');
+      if (!btn) return;
+      btn.addEventListener('click', toggleAutoSave);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initAutoSaveButton, { once: true });
+    } else {
+      initAutoSaveButton();
+    }
+  })();
+</script>
 
 <!-- Proteger selectores de tiempo: ejecutar después de que todos los scripts se carguen -->
 <script>

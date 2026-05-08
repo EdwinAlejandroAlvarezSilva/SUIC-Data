@@ -24,6 +24,17 @@ function _updateChronDisplay() {
     total += Math.floor((Date.now() - _lastStartTs) / 1000);
   }
   span.textContent = `Tiempo: ${_formatHHMMSS(total)}`;
+  
+  // Sincronizar con DraftSystem si está disponible
+  try {
+    if (typeof window.DraftSystem !== 'undefined' && window.DraftSystem.setChronoState) {
+      window.DraftSystem.setChronoState({
+        elapsedSeconds: _elapsedSeconds,
+        running: _running,
+        lastStartTs: _lastStartTs
+      });
+    }
+  } catch (e) { /* ignore */ }
 }
 
 function _startChrono(force=false) {
@@ -36,6 +47,16 @@ function _startChrono(force=false) {
     _chronInterval = setInterval(_updateChronDisplay, 1000);
   }
   _updateChronDisplay();
+  
+  // Sincronizar con DraftSystem
+  try {
+    if (typeof window.DraftSystem !== 'undefined' && window.DraftSystem.setChronoState) {
+      window.DraftSystem.setChronoState({
+        running: true,
+        lastStartTs: _lastStartTs
+      });
+    }
+  } catch (e) { /* ignore */ }
 }
 
 function _pauseChrono() {
@@ -46,6 +67,17 @@ function _pauseChrono() {
   _lastStartTs = null;
   _updateChronDisplay();
   _handlePausedChronoDisplay();
+  
+  // Sincronizar con DraftSystem
+  try {
+    if (typeof window.DraftSystem !== 'undefined' && window.DraftSystem.setChronoState) {
+      window.DraftSystem.setChronoState({
+        elapsedSeconds: _elapsedSeconds,
+        running: false,
+        lastStartTs: null
+      });
+    }
+  } catch (e) { /* ignore */ }
 }
 
 // Guardar/mostrar valor final del cronómetro en la UI y en localStorage
@@ -86,30 +118,30 @@ function _resetChrono() {
 // --- Persistencia de borrador (autosave) para evitar pérdida de datos ---
 const DRAFT_KEY = 'suic_draft';
 
-// Clave para la preferencia del autoborrador
-const AUTODELETE_KEY = 'autodelete_enabled';
+// Clave para la preferencia de autoguardado
+const AUTOSAVE_KEY = 'autosave_enabled';
 
-function isAutodeleteEnabled(){
-  try{ return localStorage.getItem(AUTODELETE_KEY) === '1' }catch(e){ return false }
+function isAutoSaveEnabled(){
+  try{ return localStorage.getItem(AUTOSAVE_KEY) === '1' }catch(e){ return false }
 }
 
-function setAutodeleteEnabled(v){
-  try{ localStorage.setItem(AUTODELETE_KEY, v ? '1' : '0') }catch(e){}
+function setAutoSaveEnabled(v){
+  try{ localStorage.setItem(AUTOSAVE_KEY, v ? '1' : '0') }catch(e){}
 }
 
 function updateAutodelBtn(){
   const btn = document.getElementById('toggle-autodelete');
   const ico = document.getElementById('autodel-icon');
   if(!btn) return;
-  const enabled = isAutodeleteEnabled();
+  const enabled = isAutoSaveEnabled();
   if(enabled){
     btn.classList.add('active');
-    btn.title = 'Autoborrador: activado';
-    if(ico) ico.textContent = '🗑️';
+    btn.title = 'Autoguardado: activado';
+    if(ico) ico.textContent = '🧾';
   } else {
     btn.classList.remove('active');
-    btn.title = 'Autoborrador: desactivado';
-    if(ico) ico.textContent = '🧾';
+    btn.title = 'Autoguardado: desactivado';
+    if(ico) ico.textContent = '🚫';
   }
 }
 
@@ -120,28 +152,35 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const btn = document.getElementById('toggle-autodelete');
     if(btn){
       btn.addEventListener('click', ()=>{
-        const cur = isAutodeleteEnabled();
-        // Guardar estado actual del cronómetro inmediatamente para evitar pérdida
+        const cur = isAutoSaveEnabled();
+        // Guardar estado actual del cronómetro inmediatamente para evitar pérdida si activamos autosave
         try {
-          // calcular tiempo total acumulado en segundos
           let total = _elapsedSeconds || 0;
           if (_running && _lastStartTs) {
             total += Math.floor((Date.now() - _lastStartTs) / 1000);
           }
-          // guardar representación legible y valor en segundos (por si se necesita)
           try { localStorage.setItem('last_cronometro', _formatHHMMSS(total)); } catch (e) { }
           try { localStorage.setItem('last_cronometro_seconds', String(total)); } catch (e) { }
-          // También hacer un guardado rápido del borrador (respaldo)
-          try { _saveDraft(); } catch (e) { }
+          if (!cur) {
+            try { _saveDraft(); } catch (e) { }
+          }
         } catch (e) { /* ignore */ }
 
-        // Alternar preferencia
-        setAutodeleteEnabled(!cur);
+        setAutoSaveEnabled(!cur);
         updateAutodelBtn();
 
-        // Si activan el autoborrador y existe un borrador, eliminarlo inmediatamente
-        // (con el respaldo anterior en localStorage no se perderá el cronómetro)
-        if(!cur){ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }
+        if(!cur) {
+          if (typeof window.DraftSystem !== 'undefined' && window.DraftSystem.startAutoSave) {
+            window.DraftSystem.startAutoSave();
+            if (typeof window.DraftSystem.restore === 'function') {
+              window.DraftSystem.restore();
+            }
+          }
+        } else {
+          if (typeof window.DraftSystem !== 'undefined' && window.DraftSystem.stopAutoSave) {
+            window.DraftSystem.stopAutoSave();
+          }
+        }
       });
     }
   }catch(e){}
@@ -175,11 +214,8 @@ function _applySerializedFields(data) {
 }
 
 function _saveDraft() {
+  if (!isAutoSaveEnabled()) return;
   try {
-    // Calcular el tiempo total tal como debería verse en el momento del guardado.
-    // Si el cronómetro está corriendo, incluir el tiempo transcurrido desde la
-    // última reanudación (_lastStartTs). De este modo, al restaurar el borrador
-    // se recupera el tiempo exacto mostrado al usuario cuando se guardó.
     let totalSeconds = _elapsedSeconds || 0;
     if (_running && _lastStartTs) {
       totalSeconds += Math.floor((Date.now() - _lastStartTs) / 1000);
@@ -204,10 +240,9 @@ function _clearDraft() {
 
 function _restoreDraftPrompt() {
   try {
-    // Evitar mostrar dialogos (confirm) cuando la pestaña no está activa
+    if (!isAutoSaveEnabled()) return;
     if (typeof document !== 'undefined' && document.hidden) {
       try {
-        // Reintentar al recuperar el foco de la ventana
         const onFocus = function() {
           try { window.removeEventListener('focus', onFocus); } catch(e){}
           try { _restoreDraftPrompt(); } catch(e){}
@@ -220,15 +255,6 @@ function _restoreDraftPrompt() {
     if (!raw) return;
     const draft = JSON.parse(raw);
     if (!draft) return;
-    // Si el autoborrador está activado, borramos el borrador sin preguntar
-    if (isAutodeleteEnabled()){
-      try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
-      return;
-    }
-    // Preguntar al usuario si desea restaurar el borrador
-    const ok = confirm('Se encontró un borrador no guardado. ¿Deseas restaurarlo para continuar?');
-    if (!ok) return;
-    // Restaurar campos
     _applySerializedFields(draft.fields);
 
     // Si el borrador incluía un valor para 'tiempo', marcarlo como editado manualmente
@@ -284,11 +310,39 @@ function _restoreDraftPrompt() {
 
 // Auto-guardar periódicamente y al descargar/cerrar la página
 try {
-  // Guardar cada 5 segundos
-  setInterval(_saveDraft, 5000);
-  window.addEventListener('beforeunload', _saveDraft);
+  if (isAutoSaveEnabled()) {
+    setInterval(_saveDraft, 5000);
+  }
+  
+  // Usar el nuevo DraftSystem si está disponible (más robusto)
+  if (typeof window.DraftSystem !== 'undefined' && window.DraftSystem.startAutoSave && isAutoSaveEnabled()) {
+    try {
+      window.DraftSystem.startAutoSave();
+    } catch (e) { /* ignore */ }
+  }
+  
+  window.addEventListener('beforeunload', () => {
+    if (!isAutoSaveEnabled()) return;
+    _saveDraft();
+    try {
+      if (typeof window.DraftSystem !== 'undefined' && window.DraftSystem.save) {
+        window.DraftSystem.save();
+      }
+    } catch (e) { /* ignore */ }
+  });
+  
   // También guardar cuando la pestaña queda oculta (opcional)
-  document.addEventListener('visibilitychange', () => { if (document.hidden) _saveDraft(); });
+  document.addEventListener('visibilitychange', () => {
+    if (!isAutoSaveEnabled()) return;
+    if (document.hidden) {
+      _saveDraft();
+      try {
+        if (typeof window.DraftSystem !== 'undefined' && window.DraftSystem.save) {
+          window.DraftSystem.save();
+        }
+      } catch (e) { /* ignore */ }
+    }
+  });
 } catch (e) { /* ignore environment limitations */ }
 
 // Inicializar pantalla
@@ -359,7 +413,40 @@ setInterval(() => {
   try{ if(typeof window.syncRegistros === 'function') window.syncRegistros(registros); }catch(e){}
 }, 300000); // Guarda cada 5 minutos
 
-function guardarFormulario(isAuto=false) {
+// --- Sincronización y merge cross-tab para registros ---
+function mergeRegistrosLocalesYRemotos(local, remoto) {
+  // Fusiona dos arrays de registros usando el timestamp (último elemento de cada registro)
+  const map = new Map();
+  [ ...(Array.isArray(local) ? local : []), ...(Array.isArray(remoto) ? remoto : []) ].forEach(item => {
+    if (!Array.isArray(item) || item.length === 0) return;
+    // Usar la combinación de los primeros 4 campos como clave única (puedes ajustar esto si tienes un ID real)
+    const clave = item.slice(0, 4).join('|');
+    const ts = typeof item[item.length-1] === 'number' ? item[item.length-1] : 0;
+    if (!map.has(clave) || map.get(clave)[item.length-1] < ts) {
+      map.set(clave, item);
+    }
+  });
+  return Array.from(map.values());
+}
+
+// Recargar y fusionar registros antes de guardar
+async function recargarYMergearRegistros() {
+  let remotos = [];
+  try {
+    if (typeof window.loadRegistrosFromStorage === 'function') {
+      const loaded = await window.loadRegistrosFromStorage();
+      if (Array.isArray(loaded)) remotos = loaded;
+    } else {
+      const raw = localStorage.getItem('registros');
+      if (raw) remotos = JSON.parse(raw);
+    }
+  } catch (e) { remotos = []; }
+  registros = mergeRegistrosLocalesYRemotos(registros, remotos);
+}
+
+// Hook: antes de guardar, mergear y recargar
+async function guardarFormulario(isAuto=false) {
+  await recargarYMergearRegistros();
   const campos = [
     "hora-inicio", "inicio", "hora-final", "final", "nombre", "acciones", "detalle",
     "fallas", "descripcion", "comentarios", "tiempo", "actualizado", "documentos",
@@ -506,7 +593,13 @@ function guardarFormulario(isAuto=false) {
   var mm = String(hoy.getMonth() + 1).padStart(2, '0');
   var dd = String(hoy.getDate()).padStart(2, '0');
   // Campo Fecha de Entrega eliminado: ya no se asigna aquí.
-  if (!isAuto) alert("Formulario guardado. Puedes llenar otro.");
+  if (!isAuto) {
+    if (typeof window.fsSyncRegistros === 'function') {
+      alert("Formulario guardado. Puedes llenar otro.\n\nImportante: Los datos se guardan en el archivo local seleccionado y se sincronizan con el servidor si está disponible.\nSi deseas cambiar a modo Disco Local, haz clic en '💾 Usar Disco Local' en la esquina inferior derecha.\nRecuerda: en modo Archivo Local, los datos están en el archivo y navegador.");
+    } else {
+      alert("Formulario guardado. Puedes llenar otro.\n\nImportante: Actualmente los datos se guardan solo en el navegador (Disco Local).\nSi deseas guardar los cambios permanentemente en un archivo, haz clic en '📁 Usar Archivo Local' en la esquina inferior derecha.\nRecuerda: en modo Disco Local, los datos solo estarán disponibles en este navegador y usuario.");
+    }
+  }
 }
 
 function descargarTodoCSV() {
@@ -758,8 +851,16 @@ window.addEventListener("load", () => {
       contadorEl.textContent = `🗂️ ${registros.length} Registro${registros.length === 1 ? "" : "s"}`;
     }
   }
-  // Intentar restaurar borrador (si existe)
-  try { _restoreDraftPrompt(); } catch (e) { /* ignore */ }
+  
+  // Intentar restaurar borrador usando el nuevo DraftSystem (más robusto)
+  try {
+    if (typeof window.DraftSystem !== 'undefined' && window.DraftSystem.restore) {
+      window.DraftSystem.restore();
+    } else {
+      // Fallback al sistema antiguo
+      _restoreDraftPrompt();
+    }
+  } catch (e) { /* ignore */ }
 });
 
 // --- Detección global de palabras clave para comentarios (Competencias) ---

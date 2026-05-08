@@ -1323,11 +1323,13 @@
                       if(ok){
                         sessionStorage.setItem('suic_unlocked_global','1'); sessionStorage.setItem('suic_option_edit_unlocked','1');
                         updateAllOptionLocks_global(); updateNavLockUI_global(); updateInteractiveStates_global();
+                        render(); // Re-render to enable/disable delete buttons
                       }
                     } else {
                       // Desbloqueado → click → bloquear inmediatamente (sin validación)
                       sessionStorage.removeItem('suic_unlocked_global'); sessionStorage.removeItem('suic_option_edit_unlocked');
                       updateAllOptionLocks_global(); updateNavLockUI_global(); updateInteractiveStates_global();
+                      render(); // Re-render to enable/disable delete buttons
                     }
                   }
                 }finally{
