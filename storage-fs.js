@@ -315,7 +315,7 @@
         // Servidor no disponible, mostrar botones
       }
 
-      if (showButtons) {
+      if (showButtons && document.title !== 'Registros') {
         injectButtons();
         injectLocalOnlyButton();
       }

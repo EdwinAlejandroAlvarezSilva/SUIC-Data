@@ -193,6 +193,12 @@
   // UI: indica estado discreto del último backup
   function updateStatusUI(snapshot){
     try{
+      const pageIsRegistros = /Registros/i.test(document.title) || /Registros\.html$/i.test(window.location.pathname);
+      if(pageIsRegistros){
+        const existing = document.getElementById('suic-backup-status');
+        if(existing) existing.remove();
+        return;
+      }
       if(!snapshot) return;
       let el = document.getElementById('suic-backup-status');
       if(!el){
@@ -237,7 +243,13 @@
     // Mostrar estado del último snapshot si existe
     try{
       const last = await getLatestSnapshot();
-      if(last) updateStatusUI(last);
+      const pageIsRegistros = /Registros/i.test(document.title) || /Registros\.html$/i.test(window.location.pathname);
+      if(pageIsRegistros){
+        const existing = document.getElementById('suic-backup-status');
+        if(existing) existing.remove();
+      } else if(last) {
+        updateStatusUI(last);
+      }
     }catch(e){}
 
     // Iniciar auto-backup periódico
