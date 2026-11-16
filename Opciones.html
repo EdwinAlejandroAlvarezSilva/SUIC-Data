@@ -807,7 +807,7 @@
       renderTimeout = setTimeout(()=>{
         renderTimeout = null;
         _doRender();
-      }, 150);
+      }, 0);
     }
 
     function _doRender(){
@@ -867,7 +867,15 @@
             else {
               del.addEventListener('click', async ()=>{
                 if(!confirm('Eliminar opción "'+v+'"?')) return;
-                const copy = (window.SUICOptions.getAll()||{}); copy[id] = copy[id].filter((x,i)=>i!==idx); window.SUICOptions.saveAll(copy); render();
+                const copy = (window.SUICOptions.getAll()||{});
+                copy[id] = copy[id].filter((x,i)=>i!==idx);
+                try{
+                  window.SUICOptions.saveAll(copy);
+                  render();
+                }catch(e){
+                  console.error('Error guardando opciones:', e);
+                  alert('No se pudo guardar el cambio. Verifica el almacenamiento del navegador e inténtalo de nuevo.');
+                }
               });
             }
           }catch(e){ /* ignore */ }
@@ -897,14 +905,25 @@
           }
         }catch(e){}
         const btn = document.createElement('button'); btn.innerText='Agregar'; btn.className='btn btn-primary'; btn.addEventListener('click', async ()=>{
-          try{
-            const unlocked = sessionStorage.getItem('suic_option_edit_unlocked') === '1' || sessionStorage.getItem('suic_unlocked_global') === '1';
-            if(!unlocked){ const ok = await performValidation(); if(!ok) return; sessionStorage.setItem('suic_option_edit_unlocked','1'); sessionStorage.setItem('suic_unlocked_global','1'); }
-          }catch(e){}
+          const unlocked = sessionStorage.getItem('suic_option_edit_unlocked') === '1' || sessionStorage.getItem('suic_unlocked_global') === '1';
+          if(!unlocked){
+            const ok = await performValidation();
+            if(!ok) return;
+            sessionStorage.setItem('suic_option_edit_unlocked','1');
+            sessionStorage.setItem('suic_unlocked_global','1');
+          }
           const val = (input.value||'').trim(); if(!val){ alert('Escribe una opción válida'); return; }
           const copy = (window.SUICOptions.getAll()||{});
           copy[id] = copy[id]||[]; if(copy[id].includes(val)){ alert('La opción ya existe'); return; }
-          copy[id].push(val); window.SUICOptions.saveAll(copy); input.value=''; render();
+          copy[id].push(val);
+          try{
+            window.SUICOptions.saveAll(copy);
+            input.value='';
+            render();
+          }catch(e){
+            console.error('Error guardando opciones:', e);
+            alert('No se pudo guardar la opción. Verifica el almacenamiento del navegador e inténtalo de nuevo.');
+          }
         });
         addRow.appendChild(input); addRow.appendChild(btn);
         sec.appendChild(addRow);
@@ -1119,6 +1138,9 @@
             console.log('  ¿Coinciden (byte a byte)?:', esValido);
 
             if(esValido){
+              window.SUICPassword = pwd;
+              window.suicPasswordData = pwd;
+              try{ localStorage.setItem('suic_password_validated_hash', pwd.hash); }catch(e){}
               console.log('✅ VALIDACIÓN EXITOSA - Contraseña correcta (contra datos frescos)');
             } else {
               console.log('❌ VALIDACIÓN FALLIDA - Contraseña incorrecta');
@@ -1150,6 +1172,9 @@
       // Validación inicial al cargar la página (regla 1)
       async function requirePrimaryAuthOnLoad(){
         try{
+          sessionStorage.removeItem('suic_nav_unlocked');
+          sessionStorage.removeItem('suic_unlocked_global');
+          sessionStorage.removeItem('suic_option_edit_unlocked');
           const p = await showPasswordModal();
           if(p === null){ alert('Acceso cancelado'); window.location.href = 'SUIC Data.html'; return; }
           const ok = await validateAgainstPasswordFile(p);

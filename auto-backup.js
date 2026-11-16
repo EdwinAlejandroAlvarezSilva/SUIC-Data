@@ -31,6 +31,14 @@
     });
   }
 
+  function isFileBackupEnabled(){
+    try {
+      return !!(window.SUIC_LOCAL_FILE_MODE || window.SUIC_USE_LOCAL_FILE || localStorage.getItem('suic_local_file_mode') === '1');
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Guardar snapshot en IndexedDB
   async function saveSnapshot(data){
     try{
@@ -168,6 +176,9 @@
 
   // Hacer backup automático
   async function autoBackup(){
+    if(!isFileBackupEnabled()) {
+      return;
+    }
     try{
       let datos = [];
       try{
@@ -229,12 +240,17 @@
   document.addEventListener('DOMContentLoaded', async ()=>{
     console.info('[auto-backup] inicializando sistema de auto-backup');
 
-    // Intenta restaurar el último snapshot si localStorage está vacío
+    if(!isFileBackupEnabled()){
+      console.info('[auto-backup] deshabilitado: no hay archivo local seleccionado');
+      return;
+    }
+
+    // No restaurar automáticamente un snapshot anterior.
+    // Esto evita que una copia vieja sobrescriba cambios recientes.
     try{
       const stored = localStorage.getItem('registros');
       if(!stored || stored === '[]' || stored === ''){
-        console.info('[auto-backup] localStorage vacío, intentando restaurar snapshot');
-        await restoreLatestSnapshot();
+        console.info('[auto-backup] localStorage vacío; no se restaura automáticamente un snapshot anterior');
       }
     }catch(e){
       console.warn('[auto-backup] error verificando localStorage');

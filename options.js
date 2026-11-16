@@ -190,7 +190,7 @@
   }
 
   function setStored(obj){
-    try{ localStorage.setItem(LS_KEY, JSON.stringify(obj||{})); }catch(e){}
+    localStorage.setItem(LS_KEY, JSON.stringify(obj||{}));
   }
 
   function applyOptions(obj){
@@ -225,14 +225,29 @@
     ensurePasswordData().catch(e => console.warn('Error loading password data:', e));
     
     const stored = getStored();
+    const defs = collectDefaults();
     if(!stored){
-      const defs = collectDefaults();
+      // No había opciones guardadas: usar los valores por defecto encontrados en el HTML
       setStored(defs);
       applyOptions(defs);
       return;
     }
-    // apply stored to page
-    applyOptions(stored);
+
+    // Si ya hay opciones guardadas, conservarlas como fuente de verdad para
+    // que las opciones eliminadas no reaparezcan desde los defaults del HTML.
+    try{
+      const merged = Object.assign({}, stored);
+      Object.keys(defs).forEach(key => {
+        if(!Array.isArray(merged[key])) merged[key] = defs[key].slice();
+      });
+      // Persistir el merge y aplicarlo al DOM
+      setStored(merged);
+      applyOptions(merged);
+    }catch(e){
+      // En caso de fallo, aplicar lo almacenado como estaba
+      console.warn('Error merging default options:', e);
+      applyOptions(stored);
+    }
   }
 
   // listen storage events to apply changes from other tabs/pages
@@ -246,7 +261,11 @@
   window.SUICOptions = {
     init: ()=> init(),
     getAll: ()=> getStored() || {},
-    saveAll: (obj)=>{ setStored(obj); try{ applyOptions(obj); }catch(e){} try{ window.dispatchEvent(new Event('suic_options:updated')); }catch(e){} },
+    saveAll: (obj)=>{
+      setStored(obj);
+      applyOptions(obj);
+      window.dispatchEvent(new Event('suic_options:updated'));
+    },
     // aplicar las opciones al DOM de la página actual
     applyAll: ()=>{ try{ const obj = getStored() || {}; applyOptions(obj); }catch(e){} }
   };

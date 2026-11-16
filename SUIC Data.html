@@ -14,6 +14,8 @@
     .hp-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.7);border:1px solid rgba(15,23,42,0.04);box-shadow:0 6px 18px rgba(16,24,40,0.05)}
     .hp-avatar img{width:100%;height:100%;object-fit:cover}
     .hp-badge:hover{transform:translateY(-2px)}
+    .header-actions{margin-left:auto;display:flex;align-items:center;gap:12px}
+    .header-actions .header-preview{margin-left:0}
   </style>
 </head>
 <body>
@@ -56,11 +58,23 @@
       </div>
     </div>
   </nav>
-  <!-- Compact profile preview: se actualiza desde localStorage (profile_editor_fb_v1) -->
-  <div id="headerPreview" class="header-preview" title="Editar perfil">
-    <div class="hp-badge" role="button" aria-label="Vista previa de perfil">
-      <div id="hpAvatar" class="hp-avatar" style="background:#2563eb">EA</div>
-      <div id="hpName" class="hp-name">Nombre Apellido</div>
+  <div class="header-actions">
+    <div class="suic-notifications">
+      <button id="suic-notifications-button" class="suic-notifications-button" type="button" aria-label="Notificaciones: 0 sin leer" aria-expanded="false" aria-controls="suic-notifications-panel" title="Notificaciones sin leer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+        <span id="suic-notifications-count" class="suic-notifications-count" hidden>0</span>
+      </button>
+      <section id="suic-notifications-panel" class="suic-notifications-panel" hidden aria-label="Tipificaciones pendientes">
+        <h2>Notificaciones <span class="suic-notifications-total">Sin leer: <span id="suic-notifications-total">0</span></span></h2>
+        <div id="suic-notifications-list" class="suic-notifications-list"></div>
+      </section>
+    </div>
+    <!-- Compact profile preview: se actualiza desde localStorage (profile_editor_fb_v1) -->
+    <div id="headerPreview" class="header-preview" title="Editar perfil">
+      <div class="hp-badge" role="button" aria-label="Vista previa de perfil">
+        <div id="hpAvatar" class="hp-avatar" style="background:#2563eb">EA</div>
+        <div id="hpName" class="hp-name">Nombre Apellido</div>
+      </div>
     </div>
   </div>
 </div>
@@ -379,7 +393,18 @@
     <div class="columna izquierda">
       <section class="nombre-tarea">
         <label for="nombre">Nombre:</label>
-        <input type="text" id="nombre" name="nombre" value="" />
+        <div style="display:flex; align-items:center; gap:8px; width:100%;">
+          <input list="popups" type="text" id="nombre" name="nombre" value="" />
+          <input type="date" id="nombre-fecha" style="position:absolute;left:-9999px;top:-9999px;" />
+          <button id="btn-fecha-nombre" type="button" title="Seleccionar fecha" style="display:none; padding:0; border-radius:6px; border:1px solid #ddd; background:rgba(0,0,0,0.03); cursor:pointer; height:38px; width:38px; min-width:38px; flex-shrink:0; align-items:center; justify-content:center; transition:all 0.2s ease;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#666;">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </button>
+        </div>
 
         <div class="acciones-wrapper">
           <label for="acciones">Acciones:</label>
@@ -503,6 +528,11 @@
         </datalist>
       </div>
 
+      <!-- Datalist para opciones de Pop Up: se rellena dinámicamente -->
+      <datalist id="popups">
+        <!-- Opciones dinámicas desde JS: Pop Ups DDMMAAAA - HH:MM (a.m./p.m.) -->
+      </datalist>
+
       <div class="detalle-linea analista-area">
         <label for="analista">Analista/ Área:</label>
         <input type="text" id="analista" name="analista" />
@@ -510,7 +540,15 @@
 
       <div class="detalle-linea documento-nombre">
         <label for="documento">Nombre de Documento:</label>
-        <input type="text" id="documento" name="documento" />
+        <div style="display:flex; align-items:center; gap:8px; width:100%;">
+          <input type="text" id="documento" name="documento" />
+          <button id="btn-copiar-documento" class="copy-document-button" type="button" title="Copiar Nombre a Nombre de Documento">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div class="detalle-linea asignado-a">
@@ -520,9 +558,8 @@
           <button id="pinAsignado" type="button" title="Fijar asignado" style="padding:6px;border-radius:8px;border:1px solid rgba(15,23,42,0.06);background:rgba(255,255,255,0.8);cursor:pointer">📌</button>
         </div>
         <datalist id="asignados">
-          <option value="Alexis Javier Rodrigo Guillermo">
           <option value="Edwin Alejandro Alvarez Silva">
-          <option value="Marianna Paola Hernandez de Abreu">
+          <option value="Fátima Alessandra Dolores Gonzales">
           <option value="Alejandro Pereyra Herrera">
         </datalist>
       </div>
@@ -555,6 +592,7 @@
             <option value="Fija">
             <option value="Ventas">
             <option value="Formadores">
+            <option value="Móvil y Fija">
           </datalist>
         </div>
       </div>
@@ -595,7 +633,7 @@
   </p>
 
   <div class="version-box">
-    <strong>Versión:</strong> 6.3.4
+    <strong>Versión:</strong> 6.4.0
   </div>
 </div>
 
@@ -706,6 +744,7 @@
 <!-- Sincronización mejorada del cronómetro -->
 <script src="chrono-sync.js"></script>
 <script src="codigo.js"></script>
+<script src="notifications.js"></script>
 
 <script>
   (function(){
@@ -833,6 +872,357 @@
       updateCompetenciasVisibility()
     })
   })()
+</script>
+
+<!-- Auto-llenado unificado de Boletín y Pop Up con funcionalidad de calendario + copiar -->
+<script>
+window.setupCategoryActions = function() {
+  const categoria = document.getElementById('categoria');
+  const nombre = document.getElementById('nombre');
+  const inputFecha = document.getElementById('nombre-fecha');
+  const btnFecha = document.getElementById('btn-fecha-nombre');
+  const documento = document.getElementById('documento');
+  const btnCopiar = document.getElementById('btn-copiar-documento');
+  const popupsDatalist = document.getElementById('popups');
+  const nombreBannerSugerido = 'Banner Boletín XXXXXXXX';
+
+  // Ocultar el input de fecha
+  if (inputFecha) {
+    inputFecha.style.position = 'absolute';
+    inputFecha.style.left = '-9999px';
+    inputFecha.style.top = '-9999px';
+    inputFecha.style.display = 'none';
+  }
+
+  if (!categoria || !nombre || !inputFecha || !btnFecha || !documento || !btnCopiar || !popupsDatalist) {
+    console.error('[CategoryActions] Elementos no encontrados');
+    return;
+  }
+
+  console.log('[CategoryActions] Setup iniciado');
+
+  function obtenerFechaFormato(dateStr) {
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return '';
+    const [y, m, d] = parts;
+    return `${d}${m}${y}`;
+  }
+
+  function textoAFecha(texto) {
+    const match = texto.match(/(\d{2})(\d{2})(\d{4})/);
+    if (!match) {
+      const hoy = new Date();
+      const d = String(hoy.getDate()).padStart(2, '0');
+      const m = String(hoy.getMonth() + 1).padStart(2, '0');
+      const y = hoy.getFullYear();
+      return `${y}-${m}-${d}`;
+    }
+    const [, d, m, y] = match;
+    return `${y}-${m}-${d}`;
+  }
+
+  function generarOpcionesPopUp(fechaDDMMAAAA) {
+    const horarios = [
+      { hora: '10:00', periodo: 'a.m.' },
+      { hora: '12:00', periodo: 'p.m.' },
+      { hora: '03:00', periodo: 'p.m.' },
+      { hora: '05:00', periodo: 'p.m.' },
+      { hora: '07:00', periodo: 'p.m.' }
+    ];
+    return horarios.map(h => `Pop Ups ${fechaDDMMAAAA} - ${h.hora} ${h.periodo}`);
+  }
+
+  function actualizarOpcionesPopUp() {
+    const nombreValor = nombre.value.trim();
+    const match = nombreValor.match(/Pop Ups\s+(\d{8})/i);
+    let fechaDDMMAAAA = '';
+
+    if (match) {
+      fechaDDMMAAAA = match[1];
+    } else {
+      const hoy = new Date();
+      const d = String(hoy.getDate()).padStart(2, '0');
+      const m = String(hoy.getMonth() + 1).padStart(2, '0');
+      const y = hoy.getFullYear();
+      fechaDDMMAAAA = `${d}${m}${y}`;
+    }
+
+    if (!popupsDatalist) return;
+    popupsDatalist.innerHTML = '';
+    const opciones = generarOpcionesPopUp(fechaDDMMAAAA);
+    opciones.forEach(opcion => {
+      const opt = document.createElement('option');
+      opt.value = opcion;
+      popupsDatalist.appendChild(opt);
+    });
+  }
+
+  function actualizarOpcionesBanner() {
+    popupsDatalist.innerHTML = '';
+    if (nombre.value.trim()) return;
+    const opt = document.createElement('option');
+    opt.value = nombreBannerSugerido;
+    popupsDatalist.appendChild(opt);
+  }
+
+  function actualizarVisibilidad() {
+    const cat = (categoria.value || '').trim().toLowerCase();
+    const esBoletin = cat === 'boletín';
+    const esPopUp = cat === 'pop up';
+    const esBanner = cat === 'banner';
+    
+    // El calendario depende de la categoría; copiar Nombre está disponible siempre.
+    btnFecha.style.display = (esBoletin || esPopUp) ? 'flex' : 'none';
+    btnCopiar.style.display = 'flex';
+
+    if (esBoletin) {
+      // Lógica para Boletín: auto-rellenar solo si está vacío
+      if (!nombre.value || !nombre.value.startsWith('Boletín')) {
+        const hoy = new Date();
+        const d = String(hoy.getDate()).padStart(2, '0');
+        const m = String(hoy.getMonth() + 1).padStart(2, '0');
+        const y = hoy.getFullYear();
+        nombre.value = `Boletín ${d}${m}${y}`;
+        inputFecha.value = `${y}-${m}-${d}`;
+      }
+      console.log('[CategoryActions] Inicializado para Boletín');
+    } else if (esPopUp) {
+      // Lógica para Pop Up: NO limpiar si ya tiene un valor válido
+      // Solo limpiar si está vacío O si no tiene el formato correcto de Pop Up
+      const esPopUpValido = nombre.value && nombre.value.match(/Pop Ups \d{8} - \d{2}:\d{2} (a\.m\.|p\.m\.)/);
+      
+      if (!esPopUpValido) {
+        // NO rellenar el nombre, solo preparar opciones
+        // nombre.value = ''; // <-- ELIMINADO para NO borrar el contenido existente
+        inputFecha.value = '';
+        actualizarOpcionesPopUp();
+        console.log('[CategoryActions] Inicializado para Pop Up - opciones disponibles');
+      } else {
+        actualizarOpcionesPopUp();
+        console.log('[CategoryActions] Pop Up válido detectado, opciones actualizadas');
+      }
+    } else if (esBanner) {
+      actualizarOpcionesBanner();
+    } else {
+      // Limpiar datalist cuando no es Pop Up
+      popupsDatalist.innerHTML = '';
+    }
+  }
+
+  // Listener para cambio de categoría
+  categoria.addEventListener('input', actualizarVisibilidad);
+  categoria.addEventListener('change', actualizarVisibilidad);
+  nombre.addEventListener('input', function() {
+    const cat = (categoria.value || '').trim().toLowerCase();
+    if (cat === 'pop up') {
+      actualizarOpcionesPopUp();
+    } else if (cat === 'banner') {
+      actualizarOpcionesBanner();
+    }
+  });
+
+  // Hover minimalista solo cuando están visibles
+  btnFecha.addEventListener('mouseenter', function() {
+    if (window.getComputedStyle(btnFecha).display !== 'none') {
+      this.style.background = 'rgba(0,0,0,0.08)';
+      this.style.borderColor = '#bbb';
+    }
+  });
+  btnFecha.addEventListener('mouseleave', function() {
+    if (window.getComputedStyle(btnFecha).display !== 'none') {
+      this.style.background = 'rgba(0,0,0,0.03)';
+      this.style.borderColor = '#ddd';
+    }
+  });
+
+  // Listener para click en botón calendario
+  btnFecha.addEventListener('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const cat = (categoria.value || '').trim().toLowerCase();
+    let fechaYYYYMMDD = '';
+    
+    if (cat === 'pop up') {
+      // Para Pop Up: usar fecha actual o extraer del nombre
+      if (nombre.value && nombre.value.match(/\d{8}/)) {
+        fechaYYYYMMDD = textoAFecha(nombre.value);
+      } else {
+        const hoy = new Date();
+        const d = String(hoy.getDate()).padStart(2, '0');
+        const m = String(hoy.getMonth() + 1).padStart(2, '0');
+        const y = hoy.getFullYear();
+        fechaYYYYMMDD = `${y}-${m}-${d}`;
+      }
+    } else if (cat === 'boletín') {
+      // Para Boletín: usar fecha actual o extraer del nombre
+      fechaYYYYMMDD = textoAFecha(nombre.value);
+    }
+    
+    inputFecha.value = fechaYYYYMMDD;
+    console.log('[CategoryActions] Click calendario - abriendo picker con fecha:', fechaYYYYMMDD);
+    
+    inputFecha.style.display = 'block';
+    inputFecha.style.position = 'static';
+    inputFecha.style.left = 'auto';
+    inputFecha.style.top = 'auto';
+    inputFecha.focus();
+    
+    if (inputFecha.showPicker && typeof inputFecha.showPicker === 'function') {
+      try {
+        inputFecha.showPicker();
+      } catch (err) {
+        console.error('[CategoryActions] showPicker error:', err);
+      }
+    } else {
+      inputFecha.click();
+    }
+  });
+
+  // Listener para when date input loses focus
+  inputFecha.addEventListener('blur', function() {
+    console.log('[CategoryActions] Input fecha blur');
+    inputFecha.style.display = 'none';
+    inputFecha.style.position = 'absolute';
+    inputFecha.style.left = '-9999px';
+    inputFecha.style.top = '-9999px';
+  });
+
+  // Listener para cambio de fecha
+  inputFecha.addEventListener('change', function() {
+    if (this.value) {
+      const cat = (categoria.value || '').trim().toLowerCase();
+      const fechaFormato = obtenerFechaFormato(this.value);
+      
+      if (cat === 'boletín') {
+        nombre.value = `Boletín ${fechaFormato}`;
+        console.log('[CategoryActions] Fecha actualizada para Boletín:', nombre.value);
+      } else if (cat === 'pop up') {
+        // Para Pop Up: actualizar las opciones del datalist con la nueva fecha
+        // Y rellenar el campo "Nombre" con la primera opción (10:00 a.m.)
+        popupsDatalist.innerHTML = '';
+        const opciones = generarOpcionesPopUp(fechaFormato);
+        opciones.forEach(opcion => {
+          const opt = document.createElement('option');
+          opt.value = opcion;
+          popupsDatalist.appendChild(opt);
+        });
+        // Rellenar el campo "Nombre" con la primera opción
+        nombre.value = opciones[0];
+        console.log('[CategoryActions] Opciones de Pop Up actualizadas con fecha:', fechaFormato);
+        console.log('[CategoryActions] Campo Nombre rellenado con:', opciones[0]);
+      }
+    }
+  });
+
+  // Listener para botón copiar
+  btnCopiar.addEventListener('click', function(e) {
+    e.preventDefault();
+    if (!nombre || !nombre.value) {
+      alert('El campo "Nombre" está vacío');
+      return;
+    }
+    documento.value = nombre.value;
+    console.log('[CategoryActions] Copiado "' + nombre.value + '" a Nombre de Documento');
+    btnCopiar.classList.add('is-copied');
+    setTimeout(() => {
+      btnCopiar.classList.remove('is-copied');
+    }, 1500);
+  });
+
+  // Listener para mostrar TODAS las opciones del datalist cuando es Pop Up
+  nombre.addEventListener('focus', function(e) {
+    const cat = (categoria.value || '').trim().toLowerCase();
+    if (cat === 'pop up') {
+      // Limpiar temporalmente para que se muestren todas las opciones
+      const valorOriginal = this.value;
+      this.value = '';
+      
+      // Simular click para abrir el datalist con todas las opciones
+      setTimeout(() => {
+        this.click();
+      }, 50);
+      
+      // Restaurar el valor original después de un pequeño delay
+      setTimeout(() => {
+        if (!this.value) {
+          this.value = valorOriginal;
+        }
+      }, 100);
+    }
+  });
+
+  // Listener para click en el campo Nombre - también mostrar todas las opciones
+  nombre.addEventListener('click', function(e) {
+    const cat = (categoria.value || '').trim().toLowerCase();
+    if (cat === 'pop up' && this.value) {
+      // Si ya hay un valor, limpiar temporalmente para mostrar todas las opciones
+      const valorOriginal = this.value;
+      this.value = '';
+      
+      // Forzar click para abrir datalist
+      setTimeout(() => {
+        this.click();
+      }, 50);
+      
+      // Restaurar valor si el usuario no selecciona nada
+      setTimeout(() => {
+        if (!this.value) {
+          this.value = valorOriginal;
+        }
+      }, 100);
+    }
+  });
+
+  // Inicializar estado
+  actualizarVisibilidad();
+  console.log('[CategoryActions] Setup completado');
+};
+
+// Ejecutar cuando DOM está listo
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', window.setupCategoryActions);
+} else {
+  window.setupCategoryActions();
+}
+</script>
+
+<!-- Auto-llenado de "Usuarios" para Accesos al Portal y Base Usuarios -->
+<script>
+window.setupAutoLlenadoUsuarios = function() {
+  const categoria = document.getElementById('categoria');
+  const documento = document.getElementById('documento');
+
+  if (!categoria || !documento) {
+    console.error('[Auto-Usuarios] Elementos no encontrados');
+    return;
+  }
+
+  console.log('[Auto-Usuarios] Setup iniciado');
+
+  function actualizarDocumento() {
+    const cat = (categoria.value || '').trim();
+    
+    // Si es "Accesos al Portal" o "Base Usuarios", llenar con "Usuarios"
+    if (cat === 'Accesos al Portal' || cat === 'Base Usuarios') {
+      documento.value = 'Usuarios';
+      console.log('[Auto-Usuarios] Campo de documento actualizado a: Usuarios');
+    }
+  }
+
+  // Listener para cambio de categoría
+  categoria.addEventListener('input', actualizarDocumento);
+  categoria.addEventListener('change', actualizarDocumento);
+
+  console.log('[Auto-Usuarios] Setup completado');
+};
+
+// Ejecutar cuando DOM está listo
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', window.setupAutoLlenadoUsuarios);
+} else {
+  window.setupAutoLlenadoUsuarios();
+}
 </script>
 
 <!-- Replicar en SUIC Data la función de descarga tal como está en Registros.html -->

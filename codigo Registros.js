@@ -43,14 +43,136 @@ window.addEventListener('registros:loaded', (evt) => {
 });
 
 function formatCell(value) {
-  if (value === null || value === undefined) return "";
-  return String(value);
+  try {
+    if (value === null || value === undefined) return "";
+    // Si es número grande (posible timestamp en ms), formatear como fecha legible
+    if (typeof value === 'number') {
+      // timestamps en ms actuales son ~1.6e12 (2020+) hasta ~1.8e12 (2037)
+      if (value > 1e12 && value < 1e14) {
+        try {
+          const d = new Date(Number(value));
+          if (!isNaN(d.getTime())) return formatDateTime(d);
+        } catch (e) { /* ignore */ }
+      }
+      // si es número normal, devolver sin cambios
+      return String(value);
+    }
+    // Si es string numérica muy larga, también intentar formatear como timestamp
+    if (typeof value === 'string') {
+      const s = value.trim();
+      const digitsOnly = /^\d{12,}$/.test(s);
+      if (digitsOnly) {
+        const n = Number(s);
+        if (n > 1e12 && n < 1e14) {
+          try {
+            const d = new Date(n);
+            if (!isNaN(d.getTime())) return formatDateTime(d);
+          } catch (e) { /* ignore */ }
+        }
+      }
+      // Si la cadena es muy larga, truncarla para evitar romper la UI
+      if (s.length > 40) return s.slice(0, 36) + '...';
+      return s;
+    }
+    return String(value);
+  } catch (e) {
+    return String(value || '');
+  }
+}
+
+function getUniqueColumnValues(rows, columnIndex) {
+  const unique = new Set();
+  if (!Array.isArray(rows)) return unique;
+  rows.forEach(row => {
+    if (!Array.isArray(row) || row[columnIndex] === null || typeof row[columnIndex] === 'undefined') return;
+    const value = String(row[columnIndex]).trim();
+    if (value) unique.add(value);
+  });
+  return unique;
 }
 
 // Persistencia de estado de filtros por encabezado (se mantiene entre re-renders)
 // Estructura: { "Inicio": ["valor1","valor2"], "Estado de Inicio": [...] }
 let persistentFiltersMap = {};
 let persistentFilterSearch = {};
+let registrosPage = 1;
+let registrosPageSize = Number(localStorage.getItem('registros_page_size')) || 80;
+// Página: lista única de tamaños permitidos
+const PAGE_SIZES = [20, 40, 80, 120, 180, 200];
+let filterOutsideClickHandlerAttached = false;
+let restoreFilterSnapshots = null;
+
+function readRegistrosData() {
+  try {
+    const raw = localStorage.getItem('registros');
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error('[registros] error leyendo registros:', e);
+    return [];
+  }
+}
+
+function persistRegistrosData(datos, options = {}) {
+  const arr = Array.isArray(datos) ? datos : [];
+  try { localStorage.setItem('registros', JSON.stringify(arr)); } catch (e) {}
+  try { window.__suicRegistrosCache = arr; } catch (e) {}
+  try { window.dispatchEvent(new CustomEvent('registros:updated', { detail: { registros: arr } })); } catch (e) {}
+  if (!options.silent && typeof window.syncRegistros === 'function') {
+    try { window.syncRegistros(arr); } catch (e) {}
+  }
+  return arr;
+}
+
+function getRegistrosPageSize() {
+  try {
+    const saved = Number(localStorage.getItem('registros_page_size'));
+    if (Number.isFinite(saved) && saved > 0 && PAGE_SIZES.includes(saved)) {
+      registrosPageSize = saved;
+    } else if (Number.isFinite(saved) && saved > 0 && !PAGE_SIZES.includes(saved)) {
+      // Si el valor guardado ya no está en la lista permitida, normalizar al más cercano
+      // encontrar valor más cercano por diferencia absoluta
+      let closest = PAGE_SIZES[0];
+      let minDiff = Math.abs(saved - closest);
+      for (let s of PAGE_SIZES) {
+        const d = Math.abs(saved - s);
+        if (d < minDiff) { minDiff = d; closest = s; }
+      }
+      registrosPageSize = closest;
+    }
+  } catch (e) {}
+  return registrosPageSize;
+}
+
+function handleOutsideFilterClick(e) {
+  // Si el click fue en la tabla o dentro de un filtro, no hacer nada
+  if (e.target.closest('.registros-table') || e.target.closest('.filter-dropdown') || e.target.closest('.filter-icon')) {
+    return;
+  }
+  // Restaurar cualquier snapshot de dropdowns abiertos antes de cerrarlos
+  if (typeof restoreFilterSnapshots === 'function') {
+    try { restoreFilterSnapshots(); } catch (err) { console.error(err); }
+  }
+  // Cerrar todos los dropdowns si el click fue realmente fuera
+  const dropdowns = document.querySelectorAll('.filter-dropdown');
+  dropdowns.forEach(dropdown => {
+    dropdown.style.display = 'none';
+  });
+}
+
+function attachOutsideFilterClickHandler() {
+  if (filterOutsideClickHandlerAttached) return;
+  document.addEventListener('click', handleOutsideFilterClick);
+  filterOutsideClickHandlerAttached = true;
+}
+
+function closeAllHeaderFilters(exceptEl = null) {
+  document.querySelectorAll('.filter-dropdown').forEach(dropdown => {
+    if (dropdown !== exceptEl) {
+      dropdown.style.display = 'none';
+    }
+  });
+}
 
 // Guardar estado de filtros y búsquedas en localStorage
 function saveSearchFilterState() {
@@ -75,6 +197,47 @@ function saveSearchFilterState() {
     localStorage.setItem('registros_filter_state', JSON.stringify(state));
   } catch (e) {
     console.error('[registros] error guardando estado de filtros:', e);
+  }
+}
+
+function clearSearchInputsOnly() {
+  try {
+    const searchInput = document.getElementById('buscador-texto');
+    const searchSelect = document.getElementById('buscador-columna');
+    const searchFecha = document.getElementById('buscador-fecha');
+    const chkInicio = document.getElementById('chk-fecha-inicio');
+    const chkFinal = document.getElementById('chk-fecha-final');
+    const chkActualizado = document.getElementById('chk-fecha-actualizado');
+
+    if (searchInput) searchInput.value = '';
+    if (searchSelect) searchSelect.value = 'all';
+    if (searchFecha) searchFecha.value = '';
+    if (chkInicio) chkInicio.checked = false;
+    if (chkFinal) chkFinal.checked = false;
+    if (chkActualizado) chkActualizado.checked = false;
+  } catch (e) {
+    console.error('[registros] error limpiando solo búsqueda:', e);
+  }
+}
+
+function clearAllHeaderFilters() {
+  try {
+    persistentFiltersMap = {};
+    persistentFilterSearch = {};
+    const filterDropdowns = document.querySelectorAll('.filter-dropdown');
+    filterDropdowns.forEach(dropdown => {
+      const th = dropdown.parentElement;
+      if (th) {
+        const icon = th.querySelector('.filter-icon');
+        if (icon) icon.classList.remove('active');
+      }
+    });
+    saveSearchFilterState();
+    // Reiniciar paginación y re-renderizar para que la vista y el paginador se sincronicen
+    try { registrosPage = 1; } catch(e){}
+    try { if (typeof cargarYMostrar === 'function') cargarYMostrar(); } catch(e){}
+  } catch (e) {
+    console.error('[registros] error limpiando filtros de encabezado:', e);
   }
 }
 
@@ -172,9 +335,15 @@ function _detectKeywordsFromTextModal(text) {
       'gea': 'GEA',
       'mdy': 'MDY',
       'partner': 'Partner',
+      'atento': 'Atento Perú',
       'atento peru': 'Atento Perú',
       'bpo peru': 'BPO Perú',
-      'grupo recupera': 'Grupo Recupera'
+      'grupo recupera': 'Grupo Recupera',
+      'ancoma': 'ANCOMA',
+      'gp asociados': 'Gp ASOCIADOS',
+      'konecta': 'Konecta',
+      'recupera': 'Recupera',
+      'verkoop': 'Verkoop'
     };
     const found = [];
     Object.keys(map).forEach(key => {
@@ -185,7 +354,7 @@ function _detectKeywordsFromTextModal(text) {
     return found;
   } catch (e) { return []; }
 }
-function _getAllKeywordLabelsModal(){ return ['A365','Concentrix','Fortel','GEA','MDY','Partner','Atento Perú','BPO Perú','Grupo Recupera']; }
+function _getAllKeywordLabelsModal(){ return ['A365','Concentrix','Fortel','GEA','MDY','Partner','Atento Perú','BPO Perú','Grupo Recupera','ANCOMA','Gp ASOCIADOS','Konecta','Recupera','Verkoop']; }
 function _applyKeywordsToEditComments(keys) {
   try {
     const comentariosEl = document.getElementById('edit-comentarios');
@@ -368,46 +537,265 @@ function crearTabla(registros, storedIndices) {
 
   const table = document.createElement('table');
   table.className = 'registros-table';
+  table.style.overflow = 'visible';
 
-  // Función para aplicar filtros
-  function applyFilters() {
-    const rows = tbody.querySelectorAll('tr');
-    rows.forEach(row => {
-      let show = true;
-      const cells = row.querySelectorAll('td');
-      filters.forEach((filterObj, idx) => {
-        if (!filterObj || filterObj.values.size === 0) return;
-        const cell = cells[idx];
-        if (!cell) return;
-        const cellText = cell.textContent || '';
-        if (!filterObj.values.has(cellText)) show = false;
-      });
-      row.style.display = show ? '' : 'none';
-    });
-    // Actualizar contador con filas visibles
-    const visibleRows = Array.from(rows).filter(row => row.style.display === '').length;
-    document.getElementById('registros-count').textContent = `${visibleRows} registro(s)`;
-
-    // Actualizar checkboxes en los dropdowns
-    const headers = showSelectionColumn ? ['Seleccionar', ...encabezados, 'Acciones'] : [...encabezados, 'Acciones'];
-    filters.forEach((filterObj, idx) => {
-      if (!filterObj) return;
-      const unique = new Set();
-      const h = headers[idx];
-      // Agregar opciones a partir de TODAS las filas (no solo las visibles)
-      Array.from(rows).forEach(row => {
-        const cells = row.querySelectorAll('td');
-        const cell = cells[idx];
-        if (cell) {
-          const val = (cell.textContent || '').trim();
-          if (val) unique.add(val);
+  // Función para aplicar filtros de columnas
+  function applyFilters(resetPage = true) {
+    // Guardar estado de los filtros de columna
+    try {
+      filters.forEach((filterObj) => {
+        if (filterObj && filterObj.headerName) {
+          persistentFiltersMap[filterObj.headerName] = Array.from(filterObj.values);
         }
       });
-      // Guardar unique en filterObj
-      filterObj.unique = unique;
-      // Actualizar checkboxes
+      saveSearchFilterState();
+    } catch(e) { console.error(e); }
+    
+    // Siempre partir del conjunto completo para conservar los índices reales al editar.
+    const datos = readRegistrosData();
+    const texto = document.getElementById('buscador-texto')?.value || '';
+    const columna = document.getElementById('buscador-columna')?.value || 'all';
+    const fecha = document.getElementById('buscador-fecha')?.value || '';
+    const columnasFecha = [];
+    if (document.getElementById('chk-fecha-inicio')?.checked) columnasFecha.push(0);
+    if (document.getElementById('chk-fecha-final')?.checked) columnasFecha.push(2);
+    if (document.getElementById('chk-fecha-actualizado')?.checked) columnasFecha.push(18);
+    const { rows: searchRows, indices: searchIndices } =
+      filtrarRegistrosWithIndices(datos, texto, columna, fecha, columnasFecha);
+
+    // Combinar búsqueda general, fecha y filtros de encabezado sin perder el índice original.
+    if (resetPage) {
+      registrosPage = 1;
+    }
+
+    const filteredData = [];
+    const filteredIndices = [];
+    searchRows.forEach((fila, idx) => {
+      let matches = true;
+      filters.forEach((filterObj) => {
+        if (!filterObj || filterObj.values.size === 0) return;
+        // Usar columnIndex que es el índice real en la fila, no el índice del array filters
+        const cellValue = String(fila[filterObj.columnIndex] || '').trim();
+        if (!filterObj.values.has(cellValue)) {
+          matches = false;
+        }
+      });
+      if (matches) {
+        filteredData.push(fila);
+        filteredIndices.push(searchIndices[idx]);
+      }
+    });
+    
+    // Calcular paginación
+    const pageSize = getRegistrosPageSize();
+    const totalFiltered = filteredData.length;
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+    if (registrosPage < 1) registrosPage = 1;
+    if (registrosPage > totalPages) registrosPage = totalPages;
+    
+    const start = (registrosPage - 1) * pageSize;
+    const end = start + pageSize;
+    const pageRows = filteredData.slice(start, end);
+    const pageRowIndices = filteredIndices.slice(start, end);
+    
+    // Limpiar tabla anterior manteniendo el thead
+    const container = document.getElementById('registros-container');
+    if (!container) return;
+    
+    const oldTbody = container.querySelector('.registros-table tbody');
+    if (oldTbody) oldTbody.remove();
+    
+    const table = container.querySelector('.registros-table');
+    if (!table) return;
+    
+    // Crear nuevo tbody con registros filtrados
+    const tbody = document.createElement('tbody');
+    const fragment = document.createDocumentFragment();
+    
+    pageRows.forEach((fila, idx) => {
+      const tr = document.createElement('tr');
+      const realIndex = pageRowIndices[idx];
+      
+      if (showSelectionColumn) {
+        const tdSel = document.createElement('td');
+        tdSel.style.textAlign = 'center';
+        tdSel.style.verticalAlign = 'middle';
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        // Usar realIndex en lugar de idx para corresponder con los índices en selectedRows
+        chk.addEventListener('change', () => {
+          if (chk.checked) {
+            selectedRows.add(realIndex);
+          } else {
+            selectedRows.delete(realIndex);
+          }
+        });
+        // Restaurar estado de selección si este índice estaba previamente seleccionado
+        if (selectedRows.has(realIndex)) {
+          chk.checked = true;
+        }
+        tdSel.appendChild(chk);
+        tr.appendChild(tdSel);
+      }
+      
+      // Asegurar que la fila tenga exactamente el número de columnas esperadas
+      for (let colIdx = 0; colIdx < encabezados.length; colIdx++) {
+        const td = document.createElement('td');
+        const val = (Array.isArray(fila) && typeof fila[colIdx] !== 'undefined') ? fila[colIdx] : '';
+        td.textContent = formatCell(val);
+        const visibility = visible[colIdx] !== false ? '' : 'none';
+        td.style.display = visibility;
+        tr.appendChild(td);
+      }
+      
+      // Columna Acciones
+      const tdAcc = document.createElement('td');
+      
+      const btnEliminar = document.createElement('button');
+      btnEliminar.className = 'btn btn-sm btn-danger row-btn-delete';
+      btnEliminar.title = 'Eliminar registro';
+      btnEliminar.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m5 0V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2"/></svg>
+        <span>Eliminar</span>
+      `;
+      btnEliminar.addEventListener('click', () => {
+        if (!confirm('¿Eliminar este registro?')) return;
+        try {
+          const all = readRegistrosData();
+          if (Array.isArray(all) && typeof realIndex === 'number') {
+            all.splice(realIndex, 1);
+            persistRegistrosData(all);
+          }
+        } catch (e) { console.error(e); }
+        cargarYMostrar();
+      });
+      tdAcc.appendChild(btnEliminar);
+
+      const btnEditar = document.createElement('button');
+      btnEditar.className = 'btn btn-sm btn-neutral row-btn-edit';
+      btnEditar.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span>Editar</span>`;
+      btnEditar.title = 'Editar registro';
+      btnEditar.addEventListener('click', () => openEditModal(realIndex));
+      tdAcc.appendChild(btnEditar);
+      if (!visible[encabezados.length]) tdAcc.style.display = 'none';
+      tr.appendChild(tdAcc);
+      
+      fragment.appendChild(tr);
+    });
+    
+    tbody.appendChild(fragment);
+    table.appendChild(tbody);
+    
+    // Actualizar paginador
+    const oldPager = container.querySelector('.paginador-info');
+    if (oldPager && oldPager.parentNode) oldPager.parentNode.remove();
+    
+    const pagerDiv = document.createElement('div');
+    pagerDiv.style.display = 'flex';
+    pagerDiv.style.justifyContent = 'space-between';
+    pagerDiv.style.alignItems = 'center';
+    pagerDiv.style.gap = '0.65rem';
+    pagerDiv.style.marginBottom = '0.75rem';
+    pagerDiv.style.flexWrap = 'wrap';
+    
+    const pagerInfo = document.createElement('span');
+    pagerInfo.className = 'paginador-info';
+    pagerInfo.textContent = totalFiltered > 0 ? `Mostrando ${start + 1}-${Math.min(end, totalFiltered)} de ${totalFiltered} registros` : 'No hay registros para mostrar';
+    pagerDiv.appendChild(pagerInfo);
+    
+    const pagerControls = document.createElement('div');
+    pagerControls.style.display = 'flex';
+    pagerControls.style.gap = '0.4rem';
+    pagerControls.style.alignItems = 'center';
+    pagerControls.style.flexWrap = 'wrap';
+    
+    const firstBtn = document.createElement('button');
+    firstBtn.className = 'btn btn-page-first paginador-btn';
+    firstBtn.textContent = 'Primero';
+    firstBtn.disabled = registrosPage <= 1;
+    firstBtn.addEventListener('click', () => {
+      if (registrosPage > 1) {
+        registrosPage = 1;
+        applyFilters(false);
+      }
+    });
+    pagerControls.appendChild(firstBtn);
+    
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'btn btn-page-prev paginador-btn';
+    prevBtn.textContent = '← Anterior';
+    prevBtn.disabled = registrosPage <= 1;
+    prevBtn.addEventListener('click', () => {
+      if (registrosPage > 1) {
+        registrosPage -= 1;
+        applyFilters(false);
+      }
+    });
+    pagerControls.appendChild(prevBtn);
+    
+    const pageLabel = document.createElement('span');
+    pageLabel.className = 'paginador-page-label';
+    pageLabel.textContent = `Página ${registrosPage} / ${totalPages}`;
+    pagerControls.appendChild(pageLabel);
+    
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'btn btn-page-next paginador-btn';
+    nextBtn.textContent = 'Siguiente →';
+    nextBtn.disabled = registrosPage >= totalPages;
+    nextBtn.addEventListener('click', () => {
+      if (registrosPage < totalPages) {
+        registrosPage += 1;
+        applyFilters(false);
+      }
+    });
+    pagerControls.appendChild(nextBtn);
+    
+    const lastBtn = document.createElement('button');
+    lastBtn.className = 'btn btn-page-last paginador-btn';
+    lastBtn.textContent = 'Último';
+    lastBtn.disabled = registrosPage >= totalPages;
+    lastBtn.addEventListener('click', () => {
+      if (registrosPage < totalPages) {
+        registrosPage = totalPages;
+        applyFilters(false);
+      }
+    });
+    pagerControls.appendChild(lastBtn);
+    
+    const pageSizeSelect = document.createElement('select');
+    pageSizeSelect.className = 'paginador-page-size';
+    pageSizeSelect.style.padding = '0.35rem 0.5rem';
+    PAGE_SIZES.forEach(size => {
+      const opt = document.createElement('option');
+      opt.value = String(size);
+      opt.textContent = `${size}/pág`;
+      if (size === pageSize) opt.selected = true;
+      pageSizeSelect.appendChild(opt);
+    });
+    pageSizeSelect.addEventListener('change', () => {
+      const val = Number(pageSizeSelect.value) || 80;
+      localStorage.setItem('registros_page_size', String(val));
+      registrosPage = 1;
+      applyFilters(false);
+    });
+    pagerControls.appendChild(pageSizeSelect);
+    pagerDiv.appendChild(pagerControls);
+    
+    table.parentNode.insertBefore(pagerDiv, table);
+    
+    // Actualizar contador
+    const countEl = document.getElementById('registros-count');
+    if (countEl) {
+      const allRows = readRegistrosData();
+      countEl.textContent = `${allRows.length} registros • ${filteredData.length} visibles`;
+    }
+
+    // Actualizar checkboxes en los dropdowns con opciones de todos los registros
+    const allRows = readRegistrosData();
+    filters.forEach((filterObj, idx) => {
+      if (!filterObj) return;
+      filterObj.unique = getUniqueColumnValues(allRows, filterObj.columnIndex);
       updateCheckboxes(filterObj);
-      // Asegurar que el icono de filtro se actualice para reflejar estado activo
       updateIcon(filterObj.th, filterObj);
     });
   }
@@ -426,6 +814,25 @@ function crearTabla(registros, storedIndices) {
   const thead = document.createElement('thead');
   const trh = document.createElement('tr');
   const filters = []; // array para los elementos de filtro
+  restoreFilterSnapshots = () => {
+    filters.forEach((filterObj) => {
+      if (!filterObj || !filterObj.el || filterObj.el.style.display !== 'block') return;
+      if (!filterObj._snapshot) return;
+      filterObj.values = new Set(filterObj._snapshot);
+      filterObj.searchTerm = filterObj._snapshotSearchTerm || '';
+      if (filterObj.addCurrentInput) {
+        filterObj.addCurrentInput.checked = !!filterObj._snapshotAddCurrent;
+      }
+      if (filterObj.el.querySelector('input[type="text"]')) {
+        filterObj.el.querySelector('input[type="text"]').value = filterObj.searchTerm;
+      }
+      persistentFiltersMap[filterObj.headerName] = Array.from(filterObj.values);
+      persistentFilterSearch[filterObj.headerName] = filterObj.searchTerm;
+      try { saveSearchFilterState(); } catch (e) { }
+      updateCheckboxes(filterObj);
+      updateIcon(filterObj.th, filterObj);
+    });
+  };
   if (showSelectionColumn) {
     const thSel = document.createElement('th');
     thSel.textContent = 'Seleccionar';
@@ -456,43 +863,61 @@ function crearTabla(registros, storedIndices) {
     }
   }
 
+  function getVisibleValues(filterObj) {
+    return Array.from(filterObj.unique).filter(val => val.toLowerCase().includes(filterObj.searchTerm));
+  }
+
+  // Función para actualizar el estado del checkbox "Seleccionar todo"
+  function updateSelectAllControl(filterObj) {
+    if (!filterObj.selectAllInput) return;
+    const visibleValues = getVisibleValues(filterObj);
+    const selectedVisible = visibleValues.filter(val => filterObj.values.has(val));
+    filterObj.selectAllInput.checked = visibleValues.length > 0 && selectedVisible.length === visibleValues.length;
+    filterObj.selectAllInput.indeterminate = selectedVisible.length > 0 && selectedVisible.length < visibleValues.length;
+    const labelText = filterObj.searchTerm
+      ? `Seleccionar todos los resultados de "${filterObj.searchTerm}"`
+      : 'Seleccionar todo';
+    if (filterObj.selectAllLabel) filterObj.selectAllLabel.textContent = labelText;
+  }
+
   // Función para actualizar checkboxes en un filtro
   function updateCheckboxes(filterObj) {
-    // Limpiar checkboxes existentes, mantener el input (primer hijo)
-    const children = Array.from(filterObj.el.children);
-    for (let i = children.length - 1; i > 0; i--) {
-      filterObj.el.removeChild(children[i]);
-    }
-    // Crear checkboxes para opciones que coinciden con searchTerm
-    filterObj.unique.forEach(val => {
-      if (val.toLowerCase().includes(filterObj.searchTerm)) {
-        const label = document.createElement('label');
-        label.style.display = 'block';
-        label.style.marginBottom = '4px';
-        label.style.whiteSpace = 'nowrap';
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.value = val;
-        checkbox.checked = filterObj.values.has(val);
-        checkbox.style.transform = 'scale(1.5)';
-        checkbox.style.marginRight = '4px';
-        checkbox.addEventListener('change', () => {
-          if (checkbox.checked) {
-            filterObj.values.add(val);
-          } else {
-            filterObj.values.delete(val);
-          }
-          // Persistir selección del filtro por encabezado
-          try { persistentFiltersMap[filterObj.headerName] = Array.from(filterObj.values); } catch(e){}
-          try { saveSearchFilterState(); } catch(e){}
-          applyFilters();
-          updateIcon(filterObj.th, filterObj);
-        });
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(' ' + val));
-        filterObj.el.appendChild(label);
-      }
+    // Eliminar los checkbox de valores previos, manteniendo los controles de búsqueda y acciones
+    const existingOptions = Array.from(filterObj.optionsContainer.querySelectorAll('label.filter-option'));
+    existingOptions.forEach(opt => opt.remove());
+
+    // Crear checkboxes para opciones que corresponden a la búsqueda actual
+    const visibleValues = getVisibleValues(filterObj);
+    visibleValues.forEach(val => {
+      const label = document.createElement('label');
+      label.className = 'filter-option';
+      label.style.display = 'flex';
+      label.style.alignItems = 'center';
+      label.style.marginBottom = '4px';
+      label.style.whiteSpace = 'nowrap';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = val;
+      checkbox.checked = filterObj.values.has(val);
+      checkbox.style.transform = 'scale(1.25)';
+      checkbox.style.marginRight = '8px';
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          filterObj.values.add(val);
+        } else {
+          filterObj.values.delete(val);
+        }
+        try { persistentFiltersMap[filterObj.headerName] = Array.from(filterObj.values); } catch(e){}
+        try { saveSearchFilterState(); } catch(e){}
+        updateIcon(filterObj.th, filterObj);
+        updateSelectAllControl(filterObj);
+      });
+      label.appendChild(checkbox);
+      label.appendChild(document.createTextNode(val));
+      filterObj.optionsContainer.appendChild(label);
     });
+
+    updateSelectAllControl(filterObj);
   }
 
   encabezados.forEach((h, colIdx) => {
@@ -508,17 +933,22 @@ function crearTabla(registros, storedIndices) {
     filterEl.style.position = 'absolute';
     filterEl.style.top = '100%';
     filterEl.style.left = '0';
-    filterEl.style.zIndex = '10';
+    filterEl.style.zIndex = '9999';
     filterEl.style.background = 'white';
     filterEl.style.border = '1px solid #ccc';
     filterEl.style.borderRadius = '4px';
     filterEl.style.padding = '8px';
-    filterEl.style.maxHeight = '200px';
-    filterEl.style.overflowY = 'auto';
-    filterEl.style.overflowX = 'auto';
+    filterEl.style.maxHeight = '520px';
+    filterEl.style.overflow = 'hidden';
+    filterEl.style.resize = 'both';
     filterEl.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-    filterEl.style.minWidth = '150px';
-    filterEl.style.maxWidth = '200px';
+    filterEl.style.minWidth = '260px';
+    filterEl.style.minHeight = '260px';
+    filterEl.style.maxWidth = '520px';
+    filterEl.style.maxHeight = '520px';
+    filterEl.style.boxSizing = 'border-box';
+    filterEl.style.flexDirection = 'column';
+    filterEl.style.gap = '8px';
     // Agregar input de búsqueda
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
@@ -527,12 +957,151 @@ function crearTabla(registros, storedIndices) {
     searchInput.style.marginBottom = '8px';
     searchInput.style.padding = '4px';
     searchInput.style.boxSizing = 'border-box';
-    filterEl.appendChild(searchInput);
-    th.appendChild(filterEl);
-    // Recuperar valores persistidos si existen
     const persistedVals = persistentFiltersMap[h] ? new Set(persistentFiltersMap[h]) : new Set();
     const persistedSearch = persistentFilterSearch[h] || '';
-    const filterObj = { el: filterEl, values: persistedVals, th: th, searchTerm: persistedSearch, headerName: h };
+    const filterObj = { el: filterEl, values: persistedVals, th: th, searchTerm: persistedSearch, headerName: h, columnIndex: colIdx, unique: new Set() };
+    filterEl._filterObj = filterObj;
+    filterEl.appendChild(searchInput);
+
+    const selectAllDiv = document.createElement('div');
+    selectAllDiv.style.display = 'flex';
+    selectAllDiv.style.alignItems = 'center';
+    selectAllDiv.style.marginBottom = '8px';
+
+    const selectAllInput = document.createElement('input');
+    selectAllInput.type = 'checkbox';
+    selectAllInput.style.transform = 'scale(1.4)';
+    selectAllInput.style.marginRight = '8px';
+    const selectAllLabel = document.createElement('span');
+    selectAllLabel.style.fontSize = '0.9rem';
+    selectAllLabel.textContent = 'Seleccionar todo';
+
+    selectAllInput.addEventListener('change', () => {
+      const visibleValues = Array.from(filterObj.unique).filter(val => val.toLowerCase().includes(filterObj.searchTerm));
+      if (selectAllInput.checked) {
+        visibleValues.forEach(val => filterObj.values.add(val));
+      } else {
+        visibleValues.forEach(val => filterObj.values.delete(val));
+      }
+      try { persistentFiltersMap[filterObj.headerName] = Array.from(filterObj.values); } catch(e){}
+      try { saveSearchFilterState(); } catch(e){}
+      updateCheckboxes(filterObj);
+      updateIcon(filterObj.th, filterObj);
+    });
+
+    selectAllDiv.appendChild(selectAllInput);
+    selectAllDiv.appendChild(selectAllLabel);
+    filterEl.appendChild(selectAllDiv);
+
+    const addCurrentDiv = document.createElement('div');
+    addCurrentDiv.style.display = 'flex';
+    addCurrentDiv.style.alignItems = 'center';
+    addCurrentDiv.style.marginBottom = '8px';
+
+    const addCurrentInput = document.createElement('input');
+    addCurrentInput.type = 'checkbox';
+    addCurrentInput.style.transform = 'scale(1.25)';
+    addCurrentInput.style.marginRight = '8px';
+    const addCurrentLabel = document.createElement('label');
+    addCurrentInput.id = `filter-add-options-${colIdx}`;
+    addCurrentLabel.htmlFor = addCurrentInput.id;
+    addCurrentLabel.style.cursor = 'pointer';
+    addCurrentLabel.style.fontSize = '0.9rem';
+    addCurrentLabel.textContent = 'Seleccionar más opciones';
+    addCurrentInput.title = 'Al marcar, agrega las opciones seleccionadas sin quitar las anteriores.';
+
+    addCurrentInput.addEventListener('change', () => {
+      try { persistentFiltersMap[filterObj.headerName] = Array.from(filterObj.values); } catch(e){}
+      try { saveSearchFilterState(); } catch(e){}
+    });
+
+    addCurrentDiv.appendChild(addCurrentInput);
+    addCurrentDiv.appendChild(addCurrentLabel);
+    filterEl.appendChild(addCurrentDiv);
+
+    const optionsContainer = document.createElement('div');
+    optionsContainer.style.flex = '1 1 auto';
+    optionsContainer.style.overflow = 'auto';
+    optionsContainer.style.border = '1px solid #e2e8f0';
+    optionsContainer.style.borderRadius = '4px';
+    optionsContainer.style.padding = '6px';
+    optionsContainer.style.background = '#fafafa';
+    optionsContainer.style.minHeight = '120px';
+    optionsContainer.style.maxHeight = '280px';
+    optionsContainer.style.display = 'flex';
+    optionsContainer.style.flexDirection = 'column';
+    optionsContainer.style.gap = '4px';
+    filterEl.appendChild(optionsContainer);
+
+    filterObj.selectAllInput = selectAllInput;
+    filterObj.selectAllLabel = selectAllLabel;
+    filterObj.addCurrentInput = addCurrentInput;
+    filterObj.addCurrentLabel = addCurrentLabel;
+    filterObj.optionsContainer = optionsContainer;
+
+    // Controles: Aceptar / Cancelar para permitir selección múltiple antes de aplicar
+    const actionsDiv = document.createElement('div');
+    actionsDiv.style.display = 'flex';
+    actionsDiv.style.justifyContent = 'flex-end';
+    actionsDiv.style.gap = '6px';
+    actionsDiv.style.marginTop = '8px';
+    actionsDiv.style.paddingTop = '8px';
+    actionsDiv.style.borderTop = '1px solid #e2e8f0';
+    actionsDiv.style.background = '#fff';
+
+    const btnCancel = document.createElement('button');
+    btnCancel.type = 'button';
+    btnCancel.className = 'btn btn-sm btn-neutral';
+    btnCancel.textContent = 'Cancelar';
+    btnCancel.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      try {
+        // Restaurar snapshot previo
+        if (filterObj && filterObj._snapshot) {
+          filterObj.values = new Set(filterObj._snapshot);
+          filterObj.searchTerm = filterObj._snapshotSearchTerm || '';
+          if (filterObj.addCurrentInput) {
+            filterObj.addCurrentInput.checked = !!filterObj._snapshotAddCurrent;
+          }
+          if (searchInput) searchInput.value = filterObj.searchTerm;
+          persistentFiltersMap[filterObj.headerName] = Array.from(filterObj.values);
+          persistentFilterSearch[filterObj.headerName] = filterObj.searchTerm;
+          saveSearchFilterState();
+          updateCheckboxes(filterObj);
+          updateIcon(filterObj.th, filterObj);
+        }
+      } catch(e) { console.error(e); }
+      // Cerrar dropdown
+      try { filterObj.el.style.display = 'none'; } catch(e){}
+    });
+    actionsDiv.appendChild(btnCancel);
+
+    const btnApply = document.createElement('button');
+    btnApply.type = 'button';
+    btnApply.className = 'btn btn-sm btn-primary';
+    btnApply.textContent = 'Aceptar';
+    btnApply.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      try {
+        const checkedOptions = Array.from(filterObj.optionsContainer.querySelectorAll('label.filter-option input[type="checkbox"]:checked'))
+          .map((input) => input.value);
+        if (filterObj.addCurrentInput && filterObj.addCurrentInput.checked) {
+          checkedOptions.forEach(val => filterObj.values.add(val));
+        } else {
+          filterObj.values = new Set(checkedOptions);
+        }
+        persistentFiltersMap[filterObj.headerName] = Array.from(filterObj.values);
+        saveSearchFilterState();
+        updateIcon(filterObj.th, filterObj);
+        applyFilters();
+      } catch(e) { console.error(e); }
+      // Cerrar dropdown
+      try { filterObj.el.style.display = 'none'; } catch(e){}
+    });
+    actionsDiv.appendChild(btnApply);
+
+    filterEl.appendChild(actionsDiv);
+    th.appendChild(filterEl);
     // Inicializar el input de búsqueda con el valor persistido
     searchInput.value = persistedSearch;
     // Aplicar icono activo si hay filtros persistidos
@@ -542,6 +1111,7 @@ function crearTabla(registros, storedIndices) {
       filterObj.searchTerm = searchInput.value.toLowerCase();
       persistentFilterSearch[h] = filterObj.searchTerm;
       updateCheckboxes(filterObj);
+      optionsContainer.scrollTop = 0;
     });
     filters[colIdx + (showSelectionColumn ? 1 : 0)] = filterObj;
     // Event listeners
@@ -549,19 +1119,42 @@ function crearTabla(registros, storedIndices) {
     const icon = th.querySelector('.filter-icon');
     icon.addEventListener('click', (e) => {
       e.stopPropagation();
+      e.preventDefault();
+      // Limpiar todos los filtros de esta columna
       filterObj.values.clear();
+      filterObj.searchTerm = '';
+      searchInput.value = '';
+      optionsContainer.scrollTop = 0;
       try { persistentFiltersMap[h] = []; persistentFilterSearch[h] = ''; } catch(e){}
+      // Actualizar los checkboxes visibles
+      updateCheckboxes(filterObj);
+      // Aplicar filtros
       applyFilters();
+      // Actualizar icono
       updateIcon(filterObj.th, filterObj);
+      // Ocultar dropdown
+      filterObj.el.style.display = 'none';
     });
     th.addEventListener('click', (e) => {
-      if (e.target === icon) return; // no mostrar filtro si click en icono
-      const isVisible = filterObj.el.style.display !== 'none';
-      // Ocultar otros filtros
-      document.querySelectorAll('.filter-dropdown').forEach(el => el.style.display = 'none');
+      e.stopPropagation();
+      // Verificar si el click fue en el icono de filtro (o dentro del SVG)
+      const clickedIcon = e.target.closest('.filter-icon');
+      if (clickedIcon) return; // no mostrar filtro si click en icono
+      const isVisible = filterObj.el.style.display === 'block';
+      // Cerrar todos los dropdowns antes de abrir el nuevo
+      closeAllHeaderFilters(isVisible ? null : filterObj.el);
       if (!isVisible) {
         filterObj.el.style.display = 'block';
+        // Asegurarse de que el handler de clicks afuera está adjuntado
+        attachOutsideFilterClickHandler();
+        // Tomar snapshot de valores actuales para permitir 'Cancelar'
+        try {
+          filterObj._snapshot = new Set(filterObj.values);
+          filterObj._snapshotSearchTerm = filterObj.searchTerm || '';
+          filterObj._snapshotAddCurrent = filterObj.addCurrentInput ? filterObj.addCurrentInput.checked : false;
+        } catch(e){}
         // Asegurarse de poblar checkboxes con el estado actual
+        filterObj.unique = getUniqueColumnValues(readRegistrosData(), filterObj.columnIndex);
         updateCheckboxes(filterObj);
       }
     });
@@ -576,11 +1169,107 @@ function crearTabla(registros, storedIndices) {
   thead.appendChild(trh);
   table.appendChild(thead);
 
+  const pageSize = getRegistrosPageSize();
+  const totalFiltered = Array.isArray(storedIndices) ? storedIndices.length : (Array.isArray(registros) ? registros.length : 0);
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+  if (registrosPage < 1) registrosPage = 1;
+  if (registrosPage > totalPages) registrosPage = totalPages;
+  const start = (registrosPage - 1) * pageSize;
+  const end = start + pageSize;
+  const pageRows = Array.isArray(registros) ? registros.slice(start, end) : [];
+  const pageIndices = Array.isArray(storedIndices) ? storedIndices.slice(start, end) : [];
+
+  const pager = document.createElement('div');
+  pager.style.display = 'flex';
+  pager.style.justifyContent = 'space-between';
+  pager.style.alignItems = 'center';
+  pager.style.gap = '0.65rem';
+  pager.style.marginBottom = '0.75rem';
+  pager.style.flexWrap = 'wrap';
+  pager.innerHTML = '';
+  const pagerInfo = document.createElement('span');
+  pagerInfo.className = 'paginador-info';
+  pagerInfo.textContent = totalFiltered > 0 ? `Mostrando ${start + 1}-${Math.min(end, totalFiltered)} de ${totalFiltered} registros` : 'No hay registros para mostrar';
+  pager.appendChild(pagerInfo);
+  const pagerControls = document.createElement('div');
+  pagerControls.style.display = 'flex';
+  pagerControls.style.gap = '0.4rem';
+  pagerControls.style.alignItems = 'center';
+  pagerControls.style.flexWrap = 'wrap';
+  const firstBtn = document.createElement('button');
+  firstBtn.className = 'btn btn-page-first paginador-btn';
+  firstBtn.textContent = 'Primero';
+  firstBtn.disabled = registrosPage <= 1;
+  firstBtn.addEventListener('click', () => {
+    if (registrosPage > 1) {
+      registrosPage = 1;
+      cargarYMostrar();
+    }
+  });
+  pagerControls.appendChild(firstBtn);
+  const prevBtn = document.createElement('button');
+  prevBtn.className = 'btn btn-page-prev paginador-btn';
+  prevBtn.textContent = '← Anterior';
+  prevBtn.disabled = registrosPage <= 1;
+  prevBtn.addEventListener('click', () => {
+    if (registrosPage > 1) {
+      registrosPage -= 1;
+      cargarYMostrar();
+    }
+  });
+  pagerControls.appendChild(prevBtn);
+  const pageLabel = document.createElement('span');
+  pageLabel.className = 'paginador-page-label';
+  pageLabel.textContent = `Página ${registrosPage} / ${totalPages}`;
+  pagerControls.appendChild(pageLabel);
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'btn btn-page-next paginador-btn';
+  nextBtn.textContent = 'Siguiente →';
+  nextBtn.disabled = registrosPage >= totalPages;
+  nextBtn.addEventListener('click', () => {
+    if (registrosPage < totalPages) {
+      registrosPage += 1;
+      cargarYMostrar();
+    }
+  });
+  pagerControls.appendChild(nextBtn);
+  const lastBtn = document.createElement('button');
+  lastBtn.className = 'btn btn-page-last paginador-btn';
+  lastBtn.textContent = 'Último';
+  lastBtn.disabled = registrosPage >= totalPages;
+  lastBtn.addEventListener('click', () => {
+    if (registrosPage < totalPages) {
+      registrosPage = totalPages;
+      cargarYMostrar();
+    }
+  });
+  pagerControls.appendChild(lastBtn);
+  const pageSizeSelect = document.createElement('select');
+  pageSizeSelect.className = 'paginador-page-size';
+  pageSizeSelect.style.padding = '0.35rem 0.5rem';
+  PAGE_SIZES.forEach(size => {
+    const opt = document.createElement('option');
+    opt.value = String(size);
+    opt.textContent = `${size}/pág`;
+    if (size === pageSize) opt.selected = true;
+    pageSizeSelect.appendChild(opt);
+  });
+  pageSizeSelect.addEventListener('change', () => {
+    const val = Number(pageSizeSelect.value) || 80;
+    localStorage.setItem('registros_page_size', String(val));
+    registrosPage = 1;
+    cargarYMostrar();
+  });
+  pagerControls.appendChild(pageSizeSelect);
+  pager.appendChild(pagerControls);
+  container.appendChild(pager);
+
   const tbody = document.createElement('tbody');
-  registros.forEach((fila, idx) => {
+  const fragment = document.createDocumentFragment();
+  pageRows.forEach((fila, idx) => {
     const tr = document.createElement('tr');
     // índice real en el array guardado
-    const realIndex = Array.isArray(storedIndices) ? storedIndices[idx] : idx;
+    const realIndex = Array.isArray(pageIndices) ? pageIndices[idx] : idx;
 
     if (showSelectionColumn) {
       const tdSel = document.createElement('td');
@@ -637,12 +1326,10 @@ function crearTabla(registros, storedIndices) {
     btnEliminar.addEventListener('click', () => {
       if (!confirm('¿Eliminar este registro?')) return;
       try {
-        const raw = localStorage.getItem('registros');
-        const all = raw ? JSON.parse(raw) : [];
+        const all = readRegistrosData();
         if (Array.isArray(all) && typeof realIndex === 'number') {
           all.splice(realIndex, 1);
-          localStorage.setItem('registros', JSON.stringify(all));
-          try{ if(typeof window.syncRegistros === 'function') window.syncRegistros(all); }catch(e){}
+          persistRegistrosData(all);
         }
       } catch (e) { console.error(e); }
       cargarYMostrar();
@@ -658,27 +1345,73 @@ function crearTabla(registros, storedIndices) {
     if (!visible[encabezados.length]) tdAcc.style.display = 'none';
     tr.appendChild(tdAcc);
 
-    tbody.appendChild(tr);
+    fragment.appendChild(tr);
   });
 
+  tbody.appendChild(fragment);
   table.appendChild(tbody);
 
-  applyFilters(); // aplicar filtros iniciales
   container.appendChild(table);
-
-  // Event listener global para ocultar filtros al hacer clic fuera
-  document.addEventListener('click', (e) => {
-    const dropdowns = document.querySelectorAll('.filter-dropdown');
-    dropdowns.forEach(dropdown => {
-      const th = dropdown.parentElement;
-      if (!th.contains(e.target)) {
-        dropdown.style.display = 'none';
-      }
-    });
+  
+  // Actualizar checkboxes con todos los valores únicos después de que la tabla esté en el DOM
+  const allRows = readRegistrosData();
+  filters.forEach((filterObj, idx) => {
+    if (!filterObj) return;
+    filterObj.unique = getUniqueColumnValues(allRows, filterObj.columnIndex);
+    // Actualizar checkboxes
+    updateCheckboxes(filterObj);
+    // Asegurar que el icono de filtro se actualice para reflejar estado activo
+    updateIcon(filterObj.th, filterObj);
   });
+
+  // Aplicar filtros persistidos si existen
+  if (persistentFiltersMap && Object.keys(persistentFiltersMap).length > 0) {
+    setTimeout(() => {
+      applyFilters(true);
+    }, 0);
+  }
 }
 
 /* --- Modal edit helpers --- */
+function updateEditPopupOptions() {
+  const nombre = document.getElementById('edit-nombre');
+  const categoria = document.getElementById('edit-categoria');
+  const modal = document.getElementById('edit-modal');
+  if (!nombre || !categoria || !modal) return;
+
+  let datalist = document.getElementById('edit-popups');
+  if (!datalist) {
+    datalist = document.createElement('datalist');
+    datalist.id = 'edit-popups';
+    modal.appendChild(datalist);
+  }
+
+  if ((categoria.value || '').trim().toLowerCase() !== 'pop up') {
+    datalist.replaceChildren();
+    return;
+  }
+
+  const match = (nombre.value || '').match(/Pop Ups\s+(\d{8})/i);
+  let fecha = match ? match[1] : '';
+  if (!fecha) {
+    const hoy = new Date();
+    fecha = `${String(hoy.getDate()).padStart(2, '0')}${String(hoy.getMonth() + 1).padStart(2, '0')}${hoy.getFullYear()}`;
+  }
+
+  const horarios = [
+    ['10:00', 'a.m.'],
+    ['12:00', 'p.m.'],
+    ['03:00', 'p.m.'],
+    ['05:00', 'p.m.'],
+    ['07:00', 'p.m.']
+  ];
+  datalist.replaceChildren(...horarios.map(([hora, periodo]) => {
+    const option = document.createElement('option');
+    option.value = `Pop Ups ${fecha} - ${hora} ${periodo}`;
+    return option;
+  }));
+}
+
 function openEditModal(index) {
   // Guardar referencia al elemento enfocado antes de abrir modal
   try { window._suic_last_focused = document.activeElement; } catch (e) { window._suic_last_focused = null; }
@@ -699,6 +1432,16 @@ function openEditModal(index) {
     if (!el) return;
     el.value = fila[i] || '';
   });
+
+  const popupNombre = document.getElementById('edit-nombre');
+  const popupCategoria = document.getElementById('edit-categoria');
+  if (popupNombre && popupCategoria && !popupCategoria.dataset.popupOptionsBound) {
+    popupCategoria.addEventListener('input', updateEditPopupOptions);
+    popupCategoria.addEventListener('change', updateEditPopupOptions);
+    popupNombre.addEventListener('input', updateEditPopupOptions);
+    popupCategoria.dataset.popupOptionsBound = '1';
+  }
+  updateEditPopupOptions();
 
   // Forzar actualización de visibilidad de campos relacionados con la categoría (si hay listener)
   try {
@@ -869,7 +1612,7 @@ function closeEditModal() {
   try { _clearModalDraft(); } catch (e) {}
 }
 
-function saveEdit() {
+async function saveEdit() {
   const modal = document.getElementById('edit-modal');
   if (!modal) return;
   const index = Number(modal.dataset.editIndex);
@@ -905,8 +1648,7 @@ function saveEdit() {
   // Asegurar que las etiquetas automáticas estén actualizadas antes de guardar
   try { const nombreVal = document.getElementById('edit-nombre')?.value || ''; const docVal = document.getElementById('edit-documento')?.value || ''; const keys = _detectKeywordsFromTextModal(nombreVal + ' ' + docVal); const catNow = (document.getElementById('edit-categoria')?.value || '').trim().toLowerCase(); if (catNow === 'competencias') _applyKeywordsToEditComments(keys); } catch (e) { /* ignore */ }
 
-  let datos = [];
-  try { const raw = localStorage.getItem('registros'); if (raw) datos = JSON.parse(raw); } catch(e) { console.error(e); }
+  let datos = readRegistrosData();
   if (!Array.isArray(datos) || !datos[index]) return alert('Registro no encontrado');
 
   const nuevo = ids.map(id => {
@@ -959,8 +1701,13 @@ function saveEdit() {
   } catch (e) { /* ignore */ }
   // Insertar al inicio
   datos.unshift(nuevo);
-  localStorage.setItem('registros', JSON.stringify(datos));
-  try{ if(typeof window.syncRegistros === 'function') window.syncRegistros(datos); }catch(e){}
+  persistRegistrosData(datos, { silent: true });
+  if (typeof window.syncRegistros === 'function') {
+    const synced = await window.syncRegistros(datos);
+    if (!synced) {
+      alert('Los cambios quedaron guardados en este navegador, pero no se pudieron sincronizar con el almacenamiento seleccionado. Verifica los permisos y vuelve a intentarlo.');
+    }
+  }
   closeEditModal();
   cargarYMostrar();
   // Al guardar el registro, eliminar el borrador del modal y detener autosave
@@ -968,12 +1715,59 @@ function saveEdit() {
   try { _clearModalDraft(); } catch (e) {}
 }
 
-// Asociar botones del modal
-document.addEventListener('click', (e) => {
-  if (e.target && e.target.id === 'edit-modal-close') closeEditModal();
-  if (e.target && e.target.id === 'edit-cancel') closeEditModal();
-  if (e.target && e.target.id === 'edit-save') saveEdit();
-});
+// Asociar botones del modal de forma aislada, sin interceptar clics globales de la página
+function attachEditModalButtonHandlers() {
+  const closeBtn = document.getElementById('edit-modal-close');
+  const cancelBtn = document.getElementById('edit-cancel');
+  const saveBtn = document.getElementById('edit-save');
+  const copyDocumentBtn = document.getElementById('edit-btn-copiar-documento');
+
+  if (copyDocumentBtn) {
+    copyDocumentBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const nombre = document.getElementById('edit-nombre');
+      const documento = document.getElementById('edit-documento');
+      if (!nombre || !documento || !nombre.value) {
+        alert('El campo "Nombre" está vacío');
+        return;
+      }
+      documento.value = nombre.value;
+      documento.dispatchEvent(new Event('input', { bubbles: true }));
+      copyDocumentBtn.classList.add('is-copied');
+      setTimeout(() => copyDocumentBtn.classList.remove('is-copied'), 1500);
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeEditModal();
+    });
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeEditModal();
+    });
+  }
+
+  if (saveBtn) {
+    saveBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      saveEdit();
+    });
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', attachEditModalButtonHandlers);
+} else {
+  attachEditModalButtonHandlers();
+}
 
 // --- Autosave / Restore específico para el modal de edición (Registros) ---
 const MODAL_DRAFT_KEY_BASE = 'suic_registros_edit_draft';
@@ -1357,13 +2151,7 @@ function applyColumnsVisibility(visibleArray) {
 }
 
 function cargarYMostrar() {
-  let datos = [];
-  try {
-    const raw = localStorage.getItem('registros');
-    if (raw) datos = JSON.parse(raw);
-  } catch (e) {
-    console.error('Error leyendo registros:', e);
-  }
+  const datos = readRegistrosData();
   const texto = document.getElementById('buscador-texto')?.value || '';
   const columna = document.getElementById('buscador-columna')?.value || 'all';
   const fecha = document.getElementById('buscador-fecha')?.value || '';
@@ -1372,6 +2160,8 @@ function cargarYMostrar() {
   if (document.getElementById('chk-fecha-final')?.checked) columnasFecha.push(2); // Final
   if (document.getElementById('chk-fecha-actualizado')?.checked) columnasFecha.push(18); // Actualizado
   const { rows, indices } = filtrarRegistrosWithIndices(datos, texto, columna, fecha, columnasFecha);
+  const countEl = document.getElementById('registros-count');
+  if (countEl) countEl.textContent = `${datos.length} registros • ${rows.length} visibles`;
   crearTabla(rows, indices);
   // Aplicar visibilidad guardada como respaldo (en caso de que la tabla ya exista)
   try {
@@ -1379,7 +2169,7 @@ function cargarYMostrar() {
     const saved = rawSaved ? JSON.parse(rawSaved) : null;
     if (Array.isArray(saved)) applyColumnsVisibility(saved);
   } catch (e) { /* ignore */ }
-  // Guardar estado actual de filtros y búsquedas
+  // Guardar estado actual de filtros y búsquedas sin sobrescribir la entrada del usuario
   saveSearchFilterState();
 }
 
@@ -1582,6 +2372,14 @@ window.addEventListener('load', () => {
   // No recalculamos diferencia; el modal usa sólo el cronómetro
 });
 
+window.addEventListener('beforeunload', saveSearchFilterState);
+window.addEventListener('pagehide', saveSearchFilterState);
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    saveSearchFilterState();
+  }
+});
+
 window.addEventListener('load', () => {
   generarControlesColumnas();
   poblarSelectorColumnas();
@@ -1600,13 +2398,10 @@ window.addEventListener('load', () => {
   if (searchInput) searchInput.addEventListener('input', debounced);
   if (searchSelect) searchSelect.addEventListener('change', cargarYMostrar);
   if (searchFecha) searchFecha.addEventListener('change', cargarYMostrar);
-  if (btnClear) btnClear.addEventListener('click', () => { 
-    if (searchInput) searchInput.value = ''; 
-    if (searchSelect) searchSelect.value = 'all'; 
-    if (searchFecha) searchFecha.value = '';
-    persistentFiltersMap = {};
-    persistentFilterSearch = {};
-    cargarYMostrar(); 
+  if (btnClear) btnClear.addEventListener('click', () => {
+    clearSearchInputsOnly();
+    clearAllHeaderFilters();
+    cargarYMostrar();
   });
 
   const btnRef = document.getElementById('btn-refrescar');
@@ -1697,7 +2492,8 @@ window.addEventListener('load', () => {
   // Opciones de acciones
   const accionSeleccionarTodo = document.getElementById('accion-seleccionar-todo');
   if (accionSeleccionarTodo) {
-    accionSeleccionarTodo.addEventListener('click', () => {
+    accionSeleccionarTodo.addEventListener('click', (e) => {
+      e.stopPropagation();
       showSelectionColumn = true;
       selectedRows.clear();
       // Marcar todos
@@ -1714,7 +2510,8 @@ window.addEventListener('load', () => {
 
   const accionSeleccionar = document.getElementById('accion-seleccionar');
   if (accionSeleccionar) {
-    accionSeleccionar.addEventListener('click', () => {
+    accionSeleccionar.addEventListener('click', (e) => {
+      e.stopPropagation();
       showSelectionColumn = true;
       cargarYMostrar();
       accionesList.style.display = 'none';
@@ -1724,7 +2521,8 @@ window.addEventListener('load', () => {
 
   const accionDeseleccionarTodo = document.getElementById('accion-deseleccionar-todo');
   if (accionDeseleccionarTodo) {
-    accionDeseleccionarTodo.addEventListener('click', () => {
+    accionDeseleccionarTodo.addEventListener('click', (e) => {
+      e.stopPropagation();
       if (selectedRows.size === 0 || !showSelectionColumn) {
         // No hacer nada si no hay seleccionadas o no se visualiza la columna
         accionesList.style.display = 'none';
@@ -1740,7 +2538,8 @@ window.addEventListener('load', () => {
 
   const accionOcultarSeleccionar = document.getElementById('accion-ocultar-seleccionar');
   if (accionOcultarSeleccionar) {
-    accionOcultarSeleccionar.addEventListener('click', () => {
+    accionOcultarSeleccionar.addEventListener('click', (e) => {
+      e.stopPropagation();
       if (showSelectionColumn) {
         showSelectionColumn = false;
         selectedRows.clear();
@@ -1753,7 +2552,8 @@ window.addEventListener('load', () => {
 
   const accionEliminar = document.getElementById('accion-eliminar');
   if (accionEliminar) {
-    accionEliminar.addEventListener('click', () => {
+    accionEliminar.addEventListener('click', (e) => {
+      e.stopPropagation();
       if (selectedRows.size === 0) {
         alert('No hay filas seleccionadas para eliminar.');
         return;
@@ -1778,7 +2578,8 @@ window.addEventListener('load', () => {
 
   const accionDuplicar = document.getElementById('accion-duplicar');
   if (accionDuplicar) {
-    accionDuplicar.addEventListener('click', () => {
+    accionDuplicar.addEventListener('click', (e) => {
+      e.stopPropagation();
       if (selectedRows.size === 0) {
         alert('No hay filas seleccionadas para duplicar.');
         return;
@@ -1812,7 +2613,8 @@ window.addEventListener('load', () => {
 
   const accionImportarDatos = document.getElementById('accion-importar-datos');
   if (accionImportarDatos) {
-    accionImportarDatos.addEventListener('click', () => {
+    accionImportarDatos.addEventListener('click', (e) => {
+      e.stopPropagation();
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = '.xlsx,.xlsm';

@@ -108,6 +108,16 @@
 		</nav>
 						<!-- Contenedor derecho: perfil -->
 						<div style="margin-left:auto; display:flex; align-items:center; gap:12px;">
+							<div class="suic-notifications">
+								<button id="suic-notifications-button" class="suic-notifications-button" type="button" aria-label="Notificaciones: 0 sin leer" aria-expanded="false" aria-controls="suic-notifications-panel" title="Notificaciones sin leer">
+									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+									<span id="suic-notifications-count" class="suic-notifications-count" hidden>0</span>
+								</button>
+								<section id="suic-notifications-panel" class="suic-notifications-panel" hidden aria-label="Tipificaciones pendientes">
+									<h2>Notificaciones <span class="suic-notifications-total">Sin leer: <span id="suic-notifications-total">0</span></span></h2>
+									<div id="suic-notifications-list" class="suic-notifications-list"></div>
+								</section>
+							</div>
 							<div id="headerPreview" class="header-preview" style="display:flex;align-items:center;gap:10px;cursor:pointer" title="Editar perfil">
 								<div class="hp-badge" role="button" aria-label="Vista previa de perfil" style="display:inline-flex;align-items:center;gap:8px;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.7);border:1px solid rgba(15,23,42,0.04);box-shadow:0 6px 18px rgba(16,24,40,0.05)">
 									<div id="hpAvatar" class="hp-avatar" style="width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex:0 0 36px;box-shadow:0 6px 14px rgba(2,6,23,0.12);overflow:hidden;background:#2563eb">EA</div>
@@ -266,7 +276,7 @@
 						<div class="columna izquierda">
 							<section class="nombre-tarea">
 								<label for="edit-nombre">Nombre:</label>
-								<input type="text" id="edit-nombre" name="edit-nombre" value="" />
+								<input type="text" id="edit-nombre" name="edit-nombre" value="" list="edit-popups" />
 
 								<div class="acciones-wrapper">
 									<label for="edit-acciones">Acciones:</label>
@@ -384,7 +394,7 @@
 									<option value="Hojas de Venta">
 									<option value="INFO ATC">
 									<option value="Otros">
-									<option value="Pop up">
+								<option value="Pop up">
 									<option value="Proyecto">
 									<option value="Publicaciones">
 								</datalist>
@@ -397,17 +407,24 @@
 
 							<div class="detalle-linea documento-nombre">
 								<label for="edit-documento">Nombre de Documento:</label>
-								<input type="text" id="edit-documento" name="edit-documento" />
+								<div style="display:flex; align-items:center; gap:8px; width:100%;">
+									<input type="text" id="edit-documento" name="edit-documento" />
+									<button id="edit-btn-copiar-documento" class="copy-document-button" type="button" title="Copiar Nombre a Nombre de Documento">
+										<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+											<rect x="9" y="9" width="13" height="13" rx="2"></rect>
+											<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+										</svg>
+									</button>
+								</div>
 							</div>
 
 							<div class="detalle-linea asignado-a">
 								<label for="edit-asignado">Asignado a:</label>
 								<input list="asignados" id="edit-asignado" name="edit-asignado" />
 								<datalist id="asignados">
-									<option value="Alexis Javier Rodrigo Guillermo">
 									<option value="Edwin Alejandro Alvarez Silva">
-									<option value="Marianna Paola Hernandez de Abreu">
-									<option value="Alejandro Pereyra Herrera"></option>
+									<option value="Fátima Alessandra Dolores Gonzales">
+									<option value="Alejandro Pereyra Herrera">
 								</datalist>
 							</div>
 
@@ -439,6 +456,7 @@
 							<option value="Fija">
 							<option value="Ventas">
 							<option value="Formadores">
+							<option value="Móvil y Fija">
 						</datalist>
 						</div>
 					</div>
@@ -662,6 +680,7 @@
 		<script src="ui-effects.js"></script>
 		<!-- Incluir el script compartido (contiene la lógica del autoborrador, cronómetro y guardado) -->
 		<script src="codigo.js"></script>
+		<script src="notifications.js"></script>
 		<script>
 		  // Botón Volver -> redirige a la página principal SUIC Data
 		  document.addEventListener('DOMContentLoaded', function(){

@@ -116,6 +116,128 @@ body.dark-theme .icono-papelera, body.dark-theme .icono-descargar {
 body.dark-theme .icono-papelera:hover, body.dark-theme .icono-descargar:hover {
   color: #ffd700;
 }
+
+/* Paginador de registros: estilos claros y oscuros para todos los botones */
+.btn-page-first,
+.btn-page-prev,
+.btn-page-next,
+.btn-page-last {
+  border-width: 1px !important;
+}
+
+body.light-theme .btn-page-first {
+  /* Usar fondo blanco sólido en vez de un gradiente transparente */
+  background: #ffffff !important;
+  color: #32587e !important;
+  /* Asegurar borde visible (ancho + estilo) */
+  border: 1px solid #32587e !important;
+}
+
+body.light-theme .btn-page-prev {
+  /* Usar fondo blanco sólido en vez de un gradiente transparente */
+  background: #ffffff !important;
+  color: #32587e !important;
+  /* Asegurar borde visible (ancho + estilo) */
+  border: 1px solid #32587e !important;
+}
+
+body.light-theme .btn-page-next {
+  /* Usar fondo blanco sólido en vez de un gradiente transparente */
+  background: #ffffff !important;
+  color: #32587e !important;
+  /* Asegurar borde visible (ancho + estilo) */
+  border: 1px solid #32587e !important;
+}
+
+body.light-theme .btn-page-last {
+  /* Usar fondo blanco sólido en vez de un gradiente transparente */
+  background: #ffffff !important;
+  color: #32587e !important;
+  /* Asegurar borde visible (ancho + estilo) */
+  border: 1px solid #32587e !important;
+}
+
+body.dark-theme .btn-page-first {
+  /* Usar fondo blanco sólido en vez de un gradiente transparente */
+  background: #ffffff !important;
+  color: #32587e !important;
+  /* Asegurar borde visible (ancho + estilo) */
+  border: 1px solid #32587e !important;
+}
+
+body.dark-theme .btn-page-prev {
+  /* Usar fondo blanco sólido en vez de un gradiente transparente */
+  background: #ffffff !important;
+  color: #32587e !important;
+  /* Asegurar borde visible (ancho + estilo) */
+  border: 1px solid #32587e !important;
+}
+
+body.dark-theme .btn-page-next {
+  /* Usar fondo blanco sólido en vez de un gradiente transparente */
+  background: #ffffff !important;
+  color: #32587e !important;
+  /* Asegurar borde visible (ancho + estilo) */
+  border: 1px solid #32587e !important;
+}
+
+body.dark-theme .btn-page-last {
+  /* Usar fondo blanco sólido en vez de un gradiente transparente */
+  background: #ffffff !important;
+  color: #32587e !important;
+  /* Asegurar borde visible (ancho + estilo) */
+  border: 1px solid #32587e !important;
+}
+
+body.light-theme .paginador-info {
+  /* Usar fondo blanco sólido en vez de un gradiente transparente */
+  background: #ffffff00 !important;
+  color: #000000 !important;
+  /* Asegurar borde visible (ancho + estilo) */
+  border: 1px solid #ffffff00 !important;
+}
+body.light-theme .paginador-page-label {
+  /* Usar fondo blanco sólido en vez de un gradiente transparente */
+  background: #ffffff00 !important;
+  color: #000000 !important;
+  /* Asegurar borde visible (ancho + estilo) */
+  border: 1px solid #ffffff00 !important;
+}
+
+body.dark-theme .paginador-info{
+  /* Usar fondo blanco sólido en vez de un gradiente transparente */
+  background: #ffffff00 !important;
+  color: #ffffff !important;
+  /* Asegurar borde visible (ancho + estilo) */
+  border: 1px solid #ffffff00 !important;
+}
+body.dark-theme .paginador-page-label {
+  /* Usar fondo blanco sólido en vez de un gradiente transparente */
+  background: #ffffff00 !important;
+  color: #ffffff !important;
+  /* Asegurar borde visible (ancho + estilo) */
+  border: 1px solid #ffffff00 !important;
+}
+
+/* Estilos independientes para el select de tamaño de página */
+body.light-theme .paginador-page-size {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #32587e !important;
+  padding: 0.35rem 0.5rem !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+}
+
+body.dark-theme .paginador-page-size {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #32587e !important;
+  padding: 0.35rem 0.5rem !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+}
+
 /* Color personalizado para el texto del lema */
 /* Reset básico */
 * {
@@ -1228,4 +1350,14 @@ body.registros-page.dark-theme .registros-table thead th .filter-icon.active svg
   stroke: #4dabf7 !important;
   color: #4dabf7 !important;
   fill: currentColor !important;
+}
+
+/* La regla global de botones recorta el contador de notificaciones. */
+.registros-page .suic-notifications-button {
+  overflow: visible;
+}
+
+.registros-page .suic-notifications-count {
+  z-index: 1;
+  pointer-events: none;
 }

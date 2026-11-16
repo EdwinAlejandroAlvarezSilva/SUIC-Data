@@ -377,9 +377,54 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (e) { /* ignore */ }
 });
 
+// Remove duplicate options from specific datalists to avoid duplicated entries
+(function dedupeDatalists(){
+  try{
+    const ids = ['asignados','categorias','detalles','prioridades','tiempos','estados','tipos-canales-list'];
+    ids.forEach(id => {
+      const dl = document.getElementById(id);
+      if (!dl) return;
+      const seen = new Set();
+      const opts = Array.from(dl.querySelectorAll('option'));
+      opts.forEach(opt => {
+        const v = (opt.value || '').trim();
+        if (!v) { opt.remove(); return; }
+        const key = v.toLowerCase();
+        if (seen.has(key)) {
+          opt.remove();
+        } else {
+          seen.add(key);
+        }
+      });
+    });
+  }catch(e){ /* ignore */ }
+})();
+
 // Los cambios en los selects controlan el cronómetro mediante colocarHora
 // (no dependemos de cambios manuales en los inputs de hora)
 let registros = [];
+
+function readRegistrosData() {
+  try {
+    const raw = localStorage.getItem('registros');
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error('[codigo.js] error leyendo registros:', e);
+    return [];
+  }
+}
+
+function persistRegistrosData(datos, options = {}) {
+  const arr = Array.isArray(datos) ? datos : [];
+  try { localStorage.setItem('registros', JSON.stringify(arr)); } catch (e) {}
+  try { window.__suicRegistrosCache = arr; } catch (e) {}
+  try { window.dispatchEvent(new CustomEvent('registros:updated', { detail: { registros: arr } })); } catch (e) {}
+  if (!options.silent && typeof window.syncRegistros === 'function') {
+    try { window.syncRegistros(arr); } catch (e) {}
+  }
+  return arr;
+}
 
 // Restaurar datos desde el almacenamiento (archivo/servidor) cuando se carga la página
 // El archivo es la fuente de verdad; localStorage es backup
@@ -397,21 +442,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-// Evento adicional: actualizar registros si el servidor tiene datos más nuevos
+// Mantener la copia en memoria al día cuando otra página o pestaña guarda cambios.
 window.addEventListener('registros:loaded', (evt) => {
   try {
     const { registros: newRegistros, count } = evt.detail || {};
-    if (Array.isArray(newRegistros) && newRegistros.length > 0) {
+    if (Array.isArray(newRegistros)) {
       registros = newRegistros;
-      console.info('[codigo.js] - registros actualizados desde servidor:', count, 'elementos');
+      console.info('[codigo.js] - registros actualizados desde almacenamiento:', count, 'elementos');
     }
   } catch (e) { /* ignore */ }
 });
 
-setInterval(() => {
-  localStorage.setItem("registros", JSON.stringify(registros));
-  try{ if(typeof window.syncRegistros === 'function') window.syncRegistros(registros); }catch(e){}
-}, 300000); // Guarda cada 5 minutos
+window.addEventListener('registros:cross-tab-updated', (evt) => {
+  const newRegistros = evt.detail && evt.detail.registros;
+  if (Array.isArray(newRegistros)) {
+    registros = newRegistros;
+  }
+});
 
 // --- Sincronización y merge cross-tab para registros ---
 function mergeRegistrosLocalesYRemotos(local, remoto) {
@@ -567,9 +614,9 @@ async function guardarFormulario(isAuto=false) {
     registro.push(''); registro.push(''); registro.push(''); registro.push('');
   }
 
+  registros = readRegistrosData();
   registros.push(registro);
-  localStorage.setItem("registros", JSON.stringify(registros));
-  try{ if(typeof window.syncRegistros === 'function') window.syncRegistros(registros); }catch(e){}
+  registros = persistRegistrosData(registros);
   // Borrar borrador tras guardado exitoso
   try { _clearDraft(); } catch (e) { /* ignore */ }
 
@@ -884,9 +931,15 @@ function _detectKeywordsFromText(text) {
       'gea': 'GEA',
       'mdy': 'MDY',
       'partner': 'Partner',
+      'atento': 'Atento Perú',
       'atento peru': 'Atento Perú',
       'bpo peru': 'BPO Perú',
-      'grupo recupera': 'Grupo Recupera'
+      'grupo recupera': 'Grupo Recupera',
+      'ancoma': 'ANCOMA',
+      'gp asociados': 'Gp ASOCIADOS',
+      'konecta': 'Konecta',
+      'recupera': 'Recupera',
+      'verkoop': 'Verkoop'
     };
     const found = [];
     Object.keys(map).forEach(key => {
@@ -922,7 +975,7 @@ function _applyKeywordsToComments(keys) {
 
 // Función pública: detecta y aplica/almacena según la categoría actual.
 function _getAllKeywordLabels(){
-  return ['A365','Concentrix','Fortel','GEA','MDY','Partner','Atento Perú','BPO Perú','Grupo Recupera'];
+  return ['A365','Concentrix','Fortel','GEA','MDY','Partner','Atento Perú','BPO Perú','Grupo Recupera','ANCOMA','Gp ASOCIADOS','Konecta','Recupera','Verkoop'];
 }
 
 function _autoCommentForCompetencias() {
@@ -1131,9 +1184,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // [REMOVIDO] Funcionalidad de doble clic para limpiar campos
 // Se removió para permitir que el usuario edite libremente sin perder contenido
 // por accidentes al hacer doble clic
-
-
-
 
 
 

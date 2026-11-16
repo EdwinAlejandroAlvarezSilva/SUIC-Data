@@ -3,6 +3,23 @@
   // Si el servidor no está disponible, se usará localStorage como fallback.
   const SERVER = 'http://localhost:3000';
   const ENDPOINT = SERVER + '/tipificaciones';
+  let syncQueue = Promise.resolve();
+
+  function isLocalFileMode(){
+    try{
+      return !!(window.SUIC_LOCAL_FILE_MODE || window.SUIC_USE_LOCAL_FILE || localStorage.getItem('suic_local_file_mode') === '1');
+    }catch(e){
+      return false;
+    }
+  }
+
+  function isLocalOnlyMode(){
+    try{
+      return localStorage.getItem('suic_local_only') === '1';
+    }catch(e){
+      return false;
+    }
+  }
 
   async function isServerAvailable(){
     try{
@@ -107,7 +124,7 @@
   }
 
   // Exponer función global para que codigo.js la invoque. Preferir File System API si existe.
-  window.syncRegistros = async function(arr) {
+  async function syncRegistrosNow(arr) {
     try {
       // Agregar timestamp a cada registro si no tiene
       const now = Date.now();
@@ -124,41 +141,38 @@
         return item;
       });
 
-      // Siempre guardar en IndexedDB como respaldo
+      if (isLocalOnlyMode()) {
+        return true;
+      }
+
+      // Si existe fsSyncRegistros (File System Access) y está activado el modo archivo local, preferirlo
+      if (isLocalFileMode()) {
+        if (typeof window.fsSyncRegistros !== 'function') {
+          console.error('[storage-client] modo Archivo Local activo, pero no hay acceso al archivo seleccionado');
+          return false;
+        }
+        try {
+          const r = await window.fsSyncRegistros(arrWithTimestamps);
+          if (r) {
+            try { localStorage.setItem('registros', JSON.stringify(arrWithTimestamps)); } catch (e) { }
+            window.dispatchEvent(new CustomEvent('registros:synced', { detail: { count: arrWithTimestamps.length } }));
+            return true;
+          }
+        } catch (e) { 
+          console.warn('[storage-client] error en File System Access', e);
+        }
+        console.error('[storage-client] no se guardaron los cambios en el archivo local; no se usará otro almacenamiento');
+        return false;
+      }
+
+      // Guardar una copia de respaldo solamente cuando el modo Archivo Local no está activo.
       try {
         await saveToIDB(arrWithTimestamps);
         console.info('[storage-client] respaldo en IndexedDB guardado');
       } catch (e) { /* ignore */ }
 
-      // Si existe fsSyncRegistros (File System Access) preferirlo
-      if (typeof window.fsSyncRegistros === 'function') {
-        try {
-          const r = await window.fsSyncRegistros(arrWithTimestamps);
-          if (r) {
-            // Disparar evento para que auto-backup haga snapshot
-            window.dispatchEvent(new CustomEvent('registros:synced', { detail: { count: arrWithTimestamps.length } }));
-            return true;
-          } else {
-            console.info('[storage-client] File System Access falló, intentando servidor');
-          }
-        } catch (e) { 
-          console.warn('[storage-client] error en File System Access', e);
-        }
-      }
-
       // siempre actualizar localStorage primero (sincrónico)
       try { localStorage.setItem('registros', JSON.stringify(arrWithTimestamps)); } catch (e) { }
-
-      // Intentar enviar via sendBeacon (útil en unload/close)
-      try{
-        if(navigator && typeof navigator.sendBeacon === 'function'){
-          try{
-            const blob = new Blob([JSON.stringify(arrWithTimestamps)], { type: 'application/json' });
-            const sent = navigator.sendBeacon(ENDPOINT, blob);
-            console.info('[storage-client] sendBeacon enviado:', sent);
-          }catch(e){ /* ignore */ }
-        }
-      }catch(e){ /* ignore */ }
 
       const ok = await pushServerData(arrWithTimestamps);
 
@@ -179,6 +193,15 @@
       }
       return ok;
     } catch (e) { console.error('[storage-client] error sincronizando', e); return false; }
+  }
+
+  window.syncRegistros = function(arr) {
+    const snapshot = Array.isArray(arr)
+      ? arr.map(item => Array.isArray(item) ? [...item] : item)
+      : [];
+    const operation = syncQueue.then(() => syncRegistrosNow(snapshot));
+    syncQueue = operation.catch(() => false);
+    return operation;
   };
 
   // Función helper para merge datos de múltiples fuentes basado en timestamps
@@ -234,12 +257,65 @@
     return hasConflict;
   }
 
-  // Función para cargar datos desde archivo/servidor (restauración automática)
+  // Función para cargar datos desde almacenamiento.
+  // Ahora prioriza el estado actual del navegador (localStorage) y evita sobrescribirlo
+  // con datos más viejos del servidor, archivo o backups automáticos.
   window.loadRegistrosFromStorage = async function(){
     console.info('[storage-client] iniciando carga de datos desde almacenamiento...');
+
+    if (isLocalOnlyMode()) {
+      try{
+        const stored = localStorage.getItem('registros');
+        const parsed = stored ? JSON.parse(stored) : [];
+        const data = Array.isArray(parsed) ? parsed : [];
+        window.dispatchEvent(new CustomEvent('registros:loaded', { detail: { registros: data, count: data.length, source: 'localStorage' } }));
+        return data;
+      }catch(e){
+        console.error('[storage-client] error leyendo datos en modo Disco Local', e);
+        return [];
+      }
+    }
+
+    if (isLocalFileMode()) {
+      if (typeof window.fsSyncRegistros === 'function') {
+        try{
+          const fileData = await window.fsSyncRegistros();
+          if (Array.isArray(fileData)) {
+            try{ localStorage.setItem('registros', JSON.stringify(fileData)); }catch(e){}
+            window.dispatchEvent(new CustomEvent('registros:loaded', { detail: { registros: fileData, count: fileData.length, source: 'file' } }));
+            return fileData;
+          }
+        }catch(e){
+          console.error('[storage-client] error leyendo el archivo seleccionado', e);
+        }
+      }
+      console.error('[storage-client] modo Archivo Local activo, pero no se pudo leer el archivo seleccionado');
+      try{
+        const stored = localStorage.getItem('registros');
+        const parsed = stored ? JSON.parse(stored) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      }catch(e){
+        console.error('[storage-client] error leyendo respaldo local', e);
+        return [];
+      }
+    }
+
+    // 1) Priorizar localStorage: si ya hay datos actuales, usarlos y no sobrescribirlos.
+    try{
+      const stored = localStorage.getItem('registros');
+      if(stored){
+        const parsed = JSON.parse(stored);
+        if(Array.isArray(parsed)){
+          console.info('[storage-client] usando datos actuales de localStorage, registros=', parsed.length);
+          window.dispatchEvent(new CustomEvent('registros:loaded', { detail: { registros: parsed, count: parsed.length, source: 'localStorage' } }));
+          return parsed;
+        }
+      }
+    }catch(e){ console.info('[storage-client] error parseando localStorage'); }
+
     const sources = [];
 
-    // Cargar desde File System Access API
+    // 2) Solo si localStorage está vacío, intentar cargar desde otras fuentes como respaldo.
     if(typeof window.fsSyncRegistros === 'function'){
       try{
         const result = await window.fsSyncRegistros(); // sin argumento = leer
@@ -250,7 +326,6 @@
       }catch(e){ console.info('[storage-client] File System API no disponible'); }
     }
 
-    // Cargar desde servidor
     try{
       const available = await isServerAvailable();
       if(available){
@@ -262,19 +337,6 @@
       }
     }catch(e){ console.info('[storage-client] no se pudo cargar desde servidor'); }
 
-    // Cargar desde localStorage
-    try{
-      const stored = localStorage.getItem('registros');
-      if(stored){
-        const parsed = JSON.parse(stored);
-        if(Array.isArray(parsed)){
-          sources.push(parsed);
-          console.info('[storage-client] datos de localStorage, registros=', parsed.length);
-        }
-      }
-    }catch(e){ console.info('[storage-client] error parseando localStorage'); }
-
-    // Cargar desde IndexedDB
     try{
       const idbData = await readFromIDB();
       if(Array.isArray(idbData) && idbData.length > 0){
@@ -283,14 +345,12 @@
       }
     }catch(e){ console.info('[storage-client] no disponible IndexedDB'); }
 
-    // Merge todos los datos
     const merged = mergeRegistrosData(sources);
 
     if(merged.length > 0){
-      // Actualizar localStorage con datos merged
       try{ localStorage.setItem('registros', JSON.stringify(merged)); }catch(e){}
-      window.dispatchEvent(new CustomEvent('registros:loaded', { detail: { registros: merged, count: merged.length } }));
-      console.info('[storage-client] datos merged y cargados, total registros=', merged.length);
+      window.dispatchEvent(new CustomEvent('registros:loaded', { detail: { registros: merged, count: merged.length, source: 'fallback' } }));
+      console.info('[storage-client] datos cargados desde respaldo alternativo, total registros=', merged.length);
       return merged;
     }
 
@@ -298,17 +358,27 @@
     return [];
   };
 
-  // Intentar inicializar registros desde servidor si existe una copia válida (on load)
+  // Inicializar solo si no hay datos actuales en localStorage.
+  // Esto evita sobrescribir cambios recientes con una copia antigua del servidor.
   document.addEventListener('DOMContentLoaded', async ()=>{
     try{
-      const available = await isServerAvailable();
-      if(!available) return;
-      const serverData = await fetchServerData();
-      if(Array.isArray(serverData) && serverData.length){
-        try{ localStorage.setItem('registros', JSON.stringify(serverData));
-          console.info('[storage-client] sincronización inicial: localStorage actualizado desde servidor');
-          window.dispatchEvent(new Event('registros:server-sync'));
-        }catch(e){}
+      if (!isLocalOnlyMode() && !isLocalFileMode()) {
+        const stored = localStorage.getItem('registros');
+        const hasCurrentData = !!stored && stored !== '[]' && stored !== '';
+        if(hasCurrentData) {
+          console.info('[storage-client] se conserva el estado actual de localStorage, no se sobrescribe desde servidor');
+        } else {
+          const available = await isServerAvailable();
+          if(available){
+            const serverData = await fetchServerData();
+            if(Array.isArray(serverData) && serverData.length){
+              try{ localStorage.setItem('registros', JSON.stringify(serverData));
+                console.info('[storage-client] sincronización inicial: localStorage actualizado desde servidor');
+                window.dispatchEvent(new Event('registros:server-sync'));
+              }catch(e){}
+            }
+          }
+        }
       }
     }catch(e){ /* ignore */ }
 

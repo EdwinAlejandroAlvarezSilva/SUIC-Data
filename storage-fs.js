@@ -78,6 +78,24 @@
     return null;
   }
 
+  function setLocalFileMode(enabled){
+    try {
+      window.SUIC_LOCAL_FILE_MODE = !!enabled;
+      window.SUIC_USE_LOCAL_FILE = !!enabled;
+      localStorage.setItem('suic_local_file_mode', enabled ? '1' : '0');
+    } catch (e) {}
+  }
+
+  async function syncFromStoredHandle(){
+    const handle = await getHandle();
+    if(handle){
+      setLocalFileMode(true);
+      return true;
+    }
+    setLocalFileMode(false);
+    return false;
+  }
+
   // Exponer API global
   window.fsSyncRegistros = async function(arr){
     try{
@@ -117,9 +135,9 @@
         const data = await readFromHandle(handle);
         if(Array.isArray(data)){
           try{ localStorage.setItem('registros', JSON.stringify(data)); }catch(e){}
-          window.dispatchEvent(new Event('registros:server-sync'));
+          window.dispatchEvent(new CustomEvent('registros:loaded', { detail: { registros: data, count: data.length, source: 'file' } }));
           console.info('[fs] leído y actualizado localStorage desde archivo, items=', data.length);
-          return true;
+          return data;
         }
         return false;
       }
@@ -206,6 +224,7 @@
       btnLocal.addEventListener('click', async () => {
         // Desactivar File System y servidor, forzar solo localStorage
         window.fsSyncRegistros = undefined;
+        setLocalFileMode(false);
         localStorage.setItem('suic_local_only', '1');
         // Borrar handle de archivo local en IndexedDB
         try {
@@ -248,6 +267,8 @@
           alert('No se pudo guardar el permiso. Intenta de nuevo.');
           return; 
         }
+        setLocalFileMode(true);
+        localStorage.removeItem('suic_local_only');
         const data = await readFromHandle(handle);
         if(Array.isArray(data)){
           try{ localStorage.setItem('registros', JSON.stringify(data)); }catch(e){}
@@ -317,12 +338,16 @@
 
       if (showButtons && document.title !== 'Registros') {
         injectButtons();
-        injectLocalOnlyButton();
       }
 
       // si ya tenemos handle, intentar leerlo
       const handle = await getHandle();
-      if(handle){ try{ await window.fsSyncRegistros(); }catch(e){} }
+      if(handle){
+        setLocalFileMode(true);
+        try{ await window.fsSyncRegistros(); }catch(e){}
+      } else {
+        setLocalFileMode(false);
+      }
     } else {
       // Si no hay soporte para File System Access, mostrar mensaje alternativo
       console.info('[fs] File System Access API no soportada en este navegador');

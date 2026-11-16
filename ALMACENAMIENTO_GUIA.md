@@ -15,8 +15,8 @@ Si estás en una empresa privada **donde no puedes abrir PowerShell/CMD**, este 
 4. **Acepta permisos** (navegador pedirá confirmación una sola vez)
 5. **Listo**, a partir de ahora:
    - ✅ Todos tus datos se guardan en ese archivo automáticamente
-   - ✅ Se hace backup automático cada 10 minutos
-   - ✅ Si se pierden datos, se restauran automáticamente
+   - ✅ Se crean snapshots de respaldo en IndexedDB del navegador
+   - ✅ Si falla la escritura, se informa el error sin cambiar de almacenamiento
 
 **Ventajas:**
 - ✅ Sin servidor
@@ -24,14 +24,13 @@ Si estás en una empresa privada **donde no puedes abrir PowerShell/CMD**, este 
 - ✅ Sin permisos de administrador
 - ✅ Funciona offline
 - ✅ Datos persisten entre navegadores/perfiles
-- ✅ **AUTO-BACKUP automático cada 10 minutos (sin hacer nada)**
-- ✅ **AUTO-RESTORE automático (si es necesario)**
+- ✅ **Snapshots de respaldo periódicos**
 
 ---
 
 ## 📦 OPCIÓN 2: Usar Servidor Express (Si la API falla)
 
-**Si el botón de almacenamiento no aparece o no funciona:**
+**Si el botón de almacenamiento no aparece o no funciona y no has seleccionado Archivo Local:**
 
 1. **Busca el archivo** `INICIAR_ALMACENAMIENTO.bat` en tu carpeta SUIC Data
 2. **Haz doble clic en él** para abrir (se abrirá una ventana)
@@ -40,8 +39,8 @@ Si estás en una empresa privada **donde no puedes abrir PowerShell/CMD**, este 
 
 **Características automáticas:**
 - ✅ Datos se guardan automáticamente en `tipificaciones.json`
-- ✅ Auto-backup cada 10 minutos (invisiblemente)
-- ✅ Auto-restore si algo falla
+- ✅ Se crean snapshots de respaldo en IndexedDB del navegador
+- ✅ Si el servidor falla, se informa; no se cambia automáticamente de almacenamiento
 
 **Nota:** La primera vez instalará dependencias (espera ~30 segundos)
 
@@ -49,46 +48,48 @@ Si estás en una empresa privada **donde no puedes abrir PowerShell/CMD**, este 
 - ✅ Funciona si File System API está bloqueada
 - ✅ Datos en archivo local `tipificaciones.json`
 - ✅ **Sincronización automática**
-- ✅ **Auto-backup y auto-restore transparente**
+- ✅ **Auto-backup transparente**
 
 ---
 
-## 🤖 SISTEMA AUTO-BACKUP/RESTORE (TOTALMENTE AUTOMÁTICO)
+## 🤖 SISTEMA DE AUTO-BACKUP
 
-**NO NECESITAS HACER NADA. El sistema funciona de forma invisible:**
+El respaldo funciona en segundo plano cuando está activo el modo Archivo Local.
 
 ### ¿Cómo funciona?
 
-- **Auto-Snapshot cada 10 minutos**: El sistema automáticamente guarda una copia de tus datos en la base de datos del navegador (IndexedDB)
+- **Auto-Snapshot cada 5 minutos**: Se guarda una copia en la base de datos del navegador (IndexedDB)
 - **Mantiene hasta 10 versiones**: Siempre tienes acceso a los últimos 10 snapshots (por si necesitas recuperar datos antiguos)
-- **Auto-Restore si falta datos**: Si localStorage se borra (cambio de perfil, etc.), automáticamente se restaura del snapshot más reciente
-- **Backup en eventos**: Cada vez que creas/editas/eliminas un registro, se hace un backup inmediato
+- **Backup en eventos**: También se crea un snapshot tras sincronizar cambios
+- **No restaura automáticamente**: Un snapshot antiguo no debe reemplazar datos actuales sin una acción explícita
 
 ### ¿Qué pasa si...?
 
 | Evento | Resultado |
 |--------|-----------|
-| Cierro el navegador | Auto-restore automático al abrir de nuevo |
-| Cambio de perfil/cuenta | Auto-restore automático en el nuevo perfil (las veces restantes) |
-| Pierdo acceso al almacenamiento | Auto-restore desde el índice más reciente |
-| 10 minutos sin cambios | Backup automático por si acaso |
-| Edito/Creo/Elimino datos | Backup inmediato + backup periódico |
+| Cierro el navegador | Los snapshots permanecen en IndexedDB de ese perfil |
+| Cambio de perfil/cuenta | Los snapshots no se comparten entre perfiles |
+| Pierdo acceso al almacenamiento | No se restaura automáticamente un snapshot anterior |
+| 5 minutos sin cambios | Se crea un snapshot si Archivo Local está activo |
+| Guardo cambios | Se crea un snapshot tras la sincronización |
 
 ---
 
-## 🔄 Jerarquía de Almacenamiento (Automática)
+## 🔄 Prioridad del almacenamiento
 
-El sistema **intenta en este orden** (sin que hagas nada):
+El modo elegido se mantiene como fuente de datos y no cambia automáticamente a otro
+almacenamiento si ocurre un error:
 
-```
-1. File System Access API (archivo seleccionado)
-   ↓ (Si no funciona)
-2. Servidor Express (localhost:3000)
-   ↓ (Si no funciona)
-3. IndexedDB con Auto-Snapshots (backup automático)
-   ↓ (Si no funciona)
-4. localStorage (temporario)
-```
+- **Archivo Local:** lee y guarda en el archivo seleccionado; no envía cambios al
+  servidor ni usa IndexedDB como almacenamiento alternativo. Si falla el permiso o
+  la escritura, se informa el error para evitar que una copia distinta sobrescriba
+  el archivo.
+- **Disco Local:** usa únicamente `localStorage` en ese navegador/perfil; no lee del
+  archivo ni sincroniza con el servidor.
+- **Servidor:** se usa cuando no está activo ninguno de los dos modos anteriores.
+
+Los auto-snapshots de respaldo, cuando están habilitados, no sustituyen la fuente
+seleccionada ni se restauran automáticamente sobre cambios actuales.
 
 ---
 
@@ -156,7 +157,7 @@ El sistema **intenta en este orden** (sin que hagas nada):
 2. Presiona F12 → Consola
 3. Busca mensajes [auto-backup]
 4. Deberías ver: "snapshot guardado: X registros"
-5. Cada 10 minutos verás nuevos snapshots
+5. Cada 5 minutos verás nuevos snapshots si Archivo Local está activo
 6. ✅ Auto-backup funcionando
 ```
 
@@ -191,4 +192,3 @@ Los snapshots se guardan en **IndexedDB del navegador** (no son directamente acc
 ---
 
 ¿Cuál opción prefieres probar primero? Avísame si algo no funciona y te ayudaré.
-
